@@ -44,3 +44,13 @@ export async function updateBookingStatus(id, status) {
   if (error) throw error;
   return data;
 }
+
+export async function updateBookingService(id, { serviceId, durationMin, priceCents }) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .update({ service_id: serviceId, duration_min: durationMin, price_cents: priceCents })
+    .eq("id", id)
+    .select();
+  if (error) throw error;
+  return data;
+}
