@@ -54,3 +54,13 @@ export async function updateBookingService(id, { serviceId, durationMin, priceCe
   if (error) throw error;
   return data;
 }
+
+export async function updateBookingPayment(id, { paid, paymentMethod }) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .update({ paid, payment_method: paid ? paymentMethod : null })
+    .eq("id", id)
+    .select();
+  if (error) throw error;
+  return data;
+}

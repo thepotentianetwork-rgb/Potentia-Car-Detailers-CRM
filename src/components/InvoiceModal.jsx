@@ -40,7 +40,14 @@ export function InvoiceModal({ booking, onClose }) {
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] mb-1">Invoice</div>
             <div className="text-sm font-semibold">#{invoiceNumber}</div>
-            <div className="text-[12px] text-[#6B7280]">{serviceDate}</div>
+            <div className="text-[12px] text-[#6B7280] mb-1.5">{serviceDate}</div>
+            <span
+              className={`inline-block text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${
+                booking.paid ? "bg-[#E3F5E8] text-[#1F7A3D]" : "bg-[#FDECEA] text-[#C0392B]"
+              }`}
+            >
+              {booking.paid ? `Paid · ${booking.payment_method || ""}` : "Unpaid"}
+            </span>
           </div>
         </div>
 
@@ -68,7 +75,7 @@ export function InvoiceModal({ booking, onClose }) {
         </table>
 
         <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB] mb-8">
-          <div className="text-sm font-bold">Total Paid</div>
+          <div className="text-sm font-bold">{booking.paid ? "Total Paid" : "Total Due"}</div>
           <div className="text-lg font-bold">${amount.toFixed(2)}</div>
         </div>
 

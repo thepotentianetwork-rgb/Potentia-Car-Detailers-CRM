@@ -62,7 +62,7 @@ export function AdminDashboard({ session, onSignOut }) {
             {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} onRefresh={load} />}
             {tab === "stats" && <StatsTab bookings={bookings} />}
             {tab === "customers" && <CustomersTab bookings={bookings} />}
-            {tab === "invoices" && <InvoicesTab bookings={bookings} />}
+            {tab === "invoices" && <InvoicesTab bookings={bookings} onRefresh={load} />}
             {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
           </>
         )}

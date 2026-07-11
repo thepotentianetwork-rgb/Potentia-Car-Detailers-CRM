@@ -16,4 +16,5 @@ export const CONFIG = {
     "Equipment Maintenance",
     "Other",
   ],
+  paymentMethods: ["Cash", "Card", "Venmo", "Zelle", "Other"],
 };
