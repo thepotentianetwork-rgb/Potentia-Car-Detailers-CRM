@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, Clock, CalendarDays, DollarSign, Receipt } from "lucide-react";
+import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users } from "lucide-react";
 import { CONFIG } from "../../config.js";
 import { fetchAllBookings, updateBookingStatus } from "../../api/bookings.js";
 import { TabButton } from "../../components/TabButton.jsx";
@@ -9,6 +9,7 @@ import { RequestsTab } from "./RequestsTab.jsx";
 import { ScheduleTab } from "./ScheduleTab.jsx";
 import { StatsTab } from "./StatsTab.jsx";
 import { ExpensesTab } from "./ExpensesTab.jsx";
+import { CustomersTab } from "./CustomersTab.jsx";
 
 export function AdminDashboard({ session, onSignOut }) {
   const [tab, setTab] = useState("requests");
@@ -51,12 +52,14 @@ export function AdminDashboard({ session, onSignOut }) {
               <TabButton active={tab === "stats"} onClick={() => setTab("stats")} icon={<DollarSign size={13} />} label="Stats" />
             </div>
             <div className="flex gap-1 bg-[#111214] border border-[#232529] rounded-lg p-1 mb-5">
+              <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users size={13} />} label="Customers" />
               <TabButton active={tab === "expenses"} onClick={() => setTab("expenses")} icon={<Receipt size={13} />} label="Expenses" />
             </div>
 
             {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} />}
             {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} />}
             {tab === "stats" && <StatsTab bookings={bookings} />}
+            {tab === "customers" && <CustomersTab bookings={bookings} />}
             {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
           </>
         )}
