@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Download } from "lucide-react";
 import { CONFIG } from "../../config.js";
 import { fetchExpenses, createExpense, deleteExpense } from "../../api/expenses.js";
 import { iso } from "../../lib/time.js";
+import { toCSV, downloadCSV } from "../../lib/csv.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
@@ -65,6 +66,17 @@ export function ExpensesTab({ userId }) {
     }
   };
 
+  const exportExpenses = () => {
+    const sorted = [...(expenses || [])].sort((a, b) => a.expense_date.localeCompare(b.expense_date));
+    const csv = toCSV(sorted, [
+      { label: "Date", value: (e) => e.expense_date },
+      { label: "Category", value: (e) => e.category },
+      { label: "Amount", value: (e) => (e.amount_cents / 100).toFixed(2) },
+      { label: "Note", value: (e) => e.note || "" },
+    ]);
+    downloadCSV(`expenses-${iso(new Date())}.csv`, csv);
+  };
+
   return (
     <div>
       {error && <ErrorBox message={error} />}
@@ -79,6 +91,14 @@ export function ExpensesTab({ userId }) {
         <div className="text-[11px] text-[#8B8F96] uppercase tracking-wide mb-1">Total Spent</div>
         <div className="text-2xl font-bold">${monthTotal.toFixed(2)}</div>
       </div>
+
+      <button
+        onClick={exportExpenses}
+        disabled={!expenses || expenses.length === 0}
+        className="w-full flex items-center justify-center gap-1.5 border border-[#232529] hover:border-[#4A4D53] text-[#C9CDD3] text-[12px] font-medium py-2.5 rounded-lg transition-colors disabled:opacity-40 mb-5"
+      >
+        <Download size={13} /> Export all expenses (CSV)
+      </button>
 
       {byCategory.length > 0 && (
         <div className="space-y-2 mb-5">
