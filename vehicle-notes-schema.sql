@@ -5,3 +5,13 @@
 
 alter table public.vehicles
   add column if not exists notes text;
+
+-- The existing RLS policies on vehicles let admins SELECT all rows but not
+-- UPDATE them (only the owning customer could update their own vehicle row).
+-- Without this, admin note-saving silently affects 0 rows instead of erroring.
+drop policy if exists "Admins can update vehicles" on public.vehicles;
+create policy "Admins can update vehicles"
+  on public.vehicles
+  for update
+  using (is_admin())
+  with check (is_admin());
