@@ -14,7 +14,9 @@ export function ExpensesTab({ userId }) {
   const [form, setForm] = useState({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "" });
   const [monthOffset, setMonthOffset] = useState(0);
 
-  const load = () => fetchExpenses().then(setExpenses).catch((e) => setError(e.message));
+  const load = () => {
+    fetchExpenses().then(setExpenses).catch((e) => setError(e.message));
+  };
   useEffect(load, []);
 
   const now = new Date();
