@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Trash2, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Download, Camera, Image, Loader2 } from "lucide-react";
 import { CONFIG } from "../../config.js";
-import { fetchExpenses, createExpense, deleteExpense } from "../../api/expenses.js";
+import { fetchExpenses, createExpense, deleteExpense, uploadReceipt, getReceiptUrl } from "../../api/expenses.js";
 import { iso } from "../../lib/time.js";
 import { toCSV, downloadCSV } from "../../lib/csv.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
@@ -12,7 +12,7 @@ export function ExpensesTab({ userId }) {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "" });
+  const [form, setForm] = useState({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "", receiptFile: null });
   const [monthOffset, setMonthOffset] = useState(0);
 
   const load = () => {
@@ -40,14 +40,19 @@ export function ExpensesTab({ userId }) {
     setSubmitting(true);
     setError("");
     try {
+      let receiptPath = null;
+      if (form.receiptFile) {
+        receiptPath = await uploadReceipt(form.receiptFile);
+      }
       await createExpense({
         expense_date: form.expense_date,
         category: form.category,
         amount_cents: Math.round(parseFloat(form.amount) * 100),
         note: form.note || null,
         created_by: userId,
+        receipt_path: receiptPath,
       });
-      setForm({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "" });
+      setForm({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "", receiptFile: null });
       setShowForm(false);
       load();
     } catch (e2) {
@@ -57,10 +62,19 @@ export function ExpensesTab({ userId }) {
     }
   };
 
-  const remove = async (id) => {
+  const remove = async (id, receiptPath) => {
     try {
-      await deleteExpense(id);
+      await deleteExpense(id, receiptPath);
       load();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const viewReceipt = async (path) => {
+    try {
+      const url = await getReceiptUrl(path);
+      window.open(url, "_blank");
     } catch (e) {
       setError(e.message);
     }
@@ -127,8 +141,22 @@ export function ExpensesTab({ userId }) {
             className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none" />
           <input placeholder="Note (optional)" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
             className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none" />
+
+          <label className="flex items-center gap-2.5 bg-[#0D0E10] border border-dashed border-[#232529] rounded-lg px-3.5 py-2.5 cursor-pointer text-[13px] text-[#8B8F96]">
+            <Camera size={15} />
+            {form.receiptFile ? form.receiptFile.name : "Attach receipt photo (optional)"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setForm((f) => ({ ...f, receiptFile: e.target.files[0] || null }))}
+              className="hidden"
+            />
+          </label>
+
           <div className="flex gap-2">
-            <button type="submit" disabled={submitting} className="flex-1 bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm py-2.5 rounded-lg disabled:opacity-60">
+            <button type="submit" disabled={submitting} className="flex-1 bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm py-2.5 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
+              {submitting && <Loader2 size={14} className="animate-spin" />}
               {submitting ? "Saving…" : "Save"}
             </button>
             <button type="button" onClick={() => setShowForm(false)} className="flex-1 border border-[#232529] text-[#8B8F96] text-sm py-2.5 rounded-lg">Cancel</button>
@@ -149,7 +177,12 @@ export function ExpensesTab({ userId }) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-semibold text-[#C9CDD3]">${(e.amount_cents / 100).toFixed(2)}</span>
-                <button onClick={() => remove(e.id)} className="text-[#5C5F66] hover:text-[#E08A8A]"><Trash2 size={13} /></button>
+                {e.receipt_path && (
+                  <button onClick={() => viewReceipt(e.receipt_path)} className="text-[#5C5F66] hover:text-[#C9CDD3]" title="View receipt">
+                    <Image size={13} />
+                  </button>
+                )}
+                <button onClick={() => remove(e.id, e.receipt_path)} className="text-[#5C5F66] hover:text-[#E08A8A]"><Trash2 size={13} /></button>
               </div>
             </div>
           ))}
