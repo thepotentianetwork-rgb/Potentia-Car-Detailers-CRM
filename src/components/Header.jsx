@@ -1,7 +1,8 @@
 import { Sparkles, LogOut, User } from "lucide-react";
-import { CONFIG } from "../config.js";
+import { useTenant } from "../context/TenantContext.jsx";
 
 export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
+  const { config } = useTenant();
   return (
     <header className="flex items-center justify-between px-5 py-4 border-b border-[#1D1E21]">
       <div className="flex items-center gap-2.5">
@@ -9,7 +10,7 @@ export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
           <Sparkles size={16} strokeWidth={2} className="text-[#C9CDD3]" />
         </div>
         <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[14px] font-bold tracking-wide uppercase">
-          {CONFIG.businessName}
+          {config.businessName}
         </div>
       </div>
       {loggedIn ? (

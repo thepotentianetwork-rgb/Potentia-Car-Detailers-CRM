@@ -1,9 +1,9 @@
 import { supabase } from "../lib/supabaseClient.js";
 
-export async function createVehicle(profileId, label) {
+export async function createVehicle(profileId, label, tenantId) {
   const { data, error } = await supabase
     .from("vehicles")
-    .insert({ profile_id: profileId, label, is_primary: true })
+    .insert({ profile_id: profileId, label, is_primary: true, tenant_id: tenantId })
     .select()
     .single();
   if (error) throw error;

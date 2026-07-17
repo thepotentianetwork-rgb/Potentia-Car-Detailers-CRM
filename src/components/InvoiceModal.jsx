@@ -1,8 +1,9 @@
 import { X, Printer } from "lucide-react";
-import { CONFIG } from "../config.js";
+import { useTenant } from "../context/TenantContext.jsx";
 import { dayLabel, minutesToDisplay, pgTimeToMinutes } from "../lib/time.js";
 
 export function InvoiceModal({ booking, onClose }) {
+  const { config } = useTenant();
   const amount = (booking.price_cents || 0) / 100;
   const invoiceNumber = booking.id.slice(0, 8).toUpperCase();
   const serviceDate = dayLabel(new Date(booking.booking_date + "T00:00:00"));
@@ -26,9 +27,9 @@ export function InvoiceModal({ booking, onClose }) {
 
         <div className="mb-6">
           <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-lg font-extrabold uppercase tracking-wide">
-            {CONFIG.businessName}
+            {config.businessName}
           </div>
-          <div className="text-[12px] text-[#6B7280]">{CONFIG.tagline}</div>
+          <div className="text-[12px] text-[#6B7280]">{config.tagline}</div>
         </div>
 
         <div className="flex items-start justify-between mb-6 pb-6 border-b border-[#E5E7EB]">
@@ -79,7 +80,7 @@ export function InvoiceModal({ booking, onClose }) {
           <div className="text-lg font-bold">${amount.toFixed(2)}</div>
         </div>
 
-        <div className="text-center text-[11px] text-[#9CA3AF] mb-6">Thank you for choosing {CONFIG.businessName}!</div>
+        <div className="text-center text-[11px] text-[#9CA3AF] mb-6">Thank you for choosing {config.businessName}!</div>
 
         <button
           onClick={() => window.print()}

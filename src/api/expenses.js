@@ -25,9 +25,9 @@ export async function deleteExpense(id, receiptPath) {
   if (error) throw error;
 }
 
-export async function uploadReceipt(file) {
+export async function uploadReceipt(file, tenantId) {
   const ext = file.name.split(".").pop();
-  const path = `${crypto.randomUUID()}.${ext}`;
+  const path = `${tenantId}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, file);
   if (error) throw error;
   return path;

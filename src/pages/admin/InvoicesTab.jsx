@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Search, Receipt, Home, Building2, Check } from "lucide-react";
-import { CONFIG } from "../../config.js";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { dayLabel } from "../../lib/time.js";
 import { updateBookingPayment } from "../../api/bookings.js";
 import { InvoiceModal } from "../../components/InvoiceModal.jsx";
@@ -82,6 +82,7 @@ export function InvoicesTab({ bookings, onRefresh }) {
 }
 
 function PaymentControl({ booking, onRefresh }) {
+  const { config } = useTenant();
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -122,7 +123,7 @@ function PaymentControl({ booking, onRefresh }) {
   if (picking) {
     return (
       <div className="flex flex-wrap gap-1.5 border-t border-[#232529] pt-2.5">
-        {CONFIG.paymentMethods.map((m) => (
+        {config.paymentMethods.map((m) => (
           <button
             key={m}
             onClick={() => markPaid(m)}

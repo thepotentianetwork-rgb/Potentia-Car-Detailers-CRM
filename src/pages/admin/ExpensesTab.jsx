@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Trash2, Download, Camera, Image, Loader2 } from "lucide-react";
-import { CONFIG } from "../../config.js";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { fetchExpenses, createExpense, deleteExpense, uploadReceipt, getReceiptUrl } from "../../api/expenses.js";
 import { iso } from "../../lib/time.js";
 import { toCSV, downloadCSV } from "../../lib/csv.js";
@@ -8,11 +8,12 @@ import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
 export function ExpensesTab({ userId }) {
+  const { tenant, config } = useTenant();
   const [expenses, setExpenses] = useState(null);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "", receiptFile: null });
+  const [form, setForm] = useState({ expense_date: iso(new Date()), category: config.expenseCategories[0], amount: "", note: "", receiptFile: null });
   const [monthOffset, setMonthOffset] = useState(0);
 
   const load = () => {
@@ -27,7 +28,7 @@ export function ExpensesTab({ userId }) {
 
   const monthExpenses = (expenses || []).filter((e) => e.expense_date.startsWith(monthKey));
   const monthTotal = monthExpenses.reduce((sum, e) => sum + e.amount_cents, 0) / 100;
-  const byCategory = CONFIG.expenseCategories
+  const byCategory = config.expenseCategories
     .map((cat) => ({
       cat,
       total: monthExpenses.filter((e) => e.category === cat).reduce((sum, e) => sum + e.amount_cents, 0) / 100,
@@ -42,7 +43,7 @@ export function ExpensesTab({ userId }) {
     try {
       let receiptPath = null;
       if (form.receiptFile) {
-        receiptPath = await uploadReceipt(form.receiptFile);
+        receiptPath = await uploadReceipt(form.receiptFile, tenant.id);
       }
       await createExpense({
         expense_date: form.expense_date,
@@ -50,9 +51,10 @@ export function ExpensesTab({ userId }) {
         amount_cents: Math.round(parseFloat(form.amount) * 100),
         note: form.note || null,
         created_by: userId,
+        tenant_id: tenant.id,
         receipt_path: receiptPath,
       });
-      setForm({ expense_date: iso(new Date()), category: CONFIG.expenseCategories[0], amount: "", note: "", receiptFile: null });
+      setForm({ expense_date: iso(new Date()), category: config.expenseCategories[0], amount: "", note: "", receiptFile: null });
       setShowForm(false);
       load();
     } catch (e2) {
@@ -135,7 +137,7 @@ export function ExpensesTab({ userId }) {
             className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none" />
           <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none">
-            {CONFIG.expenseCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {config.expenseCategories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <input type="number" step="0.01" placeholder="Amount ($)" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
             className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none" />

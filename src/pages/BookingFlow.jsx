@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
-import { CONFIG } from "../config.js";
+import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
 import { fetchAvailability, createBooking } from "../api/bookings.js";
 import { createVehicle } from "../api/vehicles.js";
@@ -9,6 +9,7 @@ import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
 export function BookingFlow({ profile, onConfirm }) {
+  const { tenant, config } = useTenant();
   const days = getNextDays(6);
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
@@ -26,23 +27,23 @@ export function BookingFlow({ profile, onConfirm }) {
   const service = services?.find((s) => s.id === serviceId);
 
   useEffect(() => {
-    fetchServices()
+    fetchServices(tenant.id)
       .then((s) => { setServices(s); setServiceId(s[0]?.id); })
       .catch((e) => setError(e.message));
-  }, []);
+  }, [tenant.id]);
 
   useEffect(() => {
     setLoadingSlots(true);
-    fetchAvailability(dateKey)
+    fetchAvailability(dateKey, tenant.id)
       .then(setDayBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoadingSlots(false));
-  }, [dateKey]);
+  }, [dateKey, tenant.id]);
 
   const availableStarts = useMemo(() => {
     if (!service) return [];
-    return getAvailableStarts(dayBookings, service.duration_min, type, CONFIG.businessHours, CONFIG.bookingGranularityMin, CONFIG.mobileTravelBufferMin);
-  }, [dayBookings, service, type]);
+    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin);
+  }, [dayBookings, service, type, config]);
 
   const submitBooking = async (startMinutes) => {
     if (!vehicle.trim()) { setError("Enter your vehicle (e.g. 2021 Ford F-150)."); return; }
@@ -50,11 +51,12 @@ export function BookingFlow({ profile, onConfirm }) {
     setSubmitting(true);
     setError("");
     try {
-      const v = await createVehicle(profile.id, vehicle.trim());
+      const v = await createVehicle(profile.id, vehicle.trim(), tenant.id);
       await createBooking({
         profile_id: profile.id,
         service_id: service.id,
         vehicle_id: v.id,
+        tenant_id: tenant.id,
         booking_date: dateKey,
         start_time: minutesToPgTime(startMinutes),
         duration_min: service.duration_min,

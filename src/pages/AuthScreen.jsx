@@ -3,7 +3,7 @@ import { User, Loader2 } from "lucide-react";
 import { signIn, signUp } from "../api/auth.js";
 import { Field } from "../components/Field.jsx";
 
-export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError }) {
+export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, tenantSlug, allowSignup = true }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +22,7 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError }) 
         const { session } = await signIn(email, password);
         await onAuthed(session);
       } else {
-        const { session } = await signUp(email, password, fullName);
+        const { session } = await signUp(email, password, fullName, tenantSlug);
         if (session) {
           await onAuthed(session);
         } else {
@@ -67,9 +67,11 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError }) 
               {isLogin ? "Sign in" : "Create account"}
             </button>
           </form>
-          <button onClick={() => setMode(isLogin ? "signup" : "login")} className="w-full text-center text-[13px] text-[#8B8F96] hover:text-[#C9CDD3] mt-5">
-            {isLogin ? "New here? Create an account" : "Already have an account? Sign in"}
-          </button>
+          {allowSignup && (
+            <button onClick={() => setMode(isLogin ? "signup" : "login")} className="w-full text-center text-[13px] text-[#8B8F96] hover:text-[#C9CDD3] mt-5">
+              {isLogin ? "New here? Create an account" : "Already have an account? Sign in"}
+            </button>
+          )}
         </div>
         <button onClick={onBack} className="w-full text-center text-[13px] text-[#5C5F66] hover:text-[#8B8F96] mt-4">Back to homepage</button>
       </div>

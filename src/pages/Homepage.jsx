@@ -1,23 +1,24 @@
 import { useState, useEffect } from "react";
 import { Wrench } from "lucide-react";
-import { CONFIG } from "../config.js";
+import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
 export function Homepage({ onBook }) {
+  const { tenant, config } = useTenant();
   const [services, setServices] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchServices().then(setServices).catch((e) => setError(e.message));
-  }, []);
+    fetchServices(tenant.id).then(setServices).catch((e) => setError(e.message));
+  }, [tenant.id]);
 
   return (
     <main className="flex-1">
       <section className="px-6 py-16 text-center max-w-md mx-auto">
         <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-2xl font-extrabold mb-2 leading-tight">
-          {CONFIG.tagline}
+          {config.tagline}
         </h1>
         <p className="text-[13px] text-[#8B8F96] mb-8">Mobile and drop-off detailing. Book online, track your service history, done.</p>
         <button onClick={onBook} className="bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm px-6 py-3 rounded-lg transition-colors">

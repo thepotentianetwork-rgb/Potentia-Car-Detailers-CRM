@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users, FileText } from "lucide-react";
-import { CONFIG } from "../../config.js";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { fetchAllBookings, updateBookingStatus } from "../../api/bookings.js";
 import { TabButton } from "../../components/TabButton.jsx";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
@@ -13,6 +13,7 @@ import { CustomersTab } from "./CustomersTab.jsx";
 import { InvoicesTab } from "./InvoicesTab.jsx";
 
 export function AdminDashboard({ session, onSignOut }) {
+  const { tenant, config } = useTenant();
   const [tab, setTab] = useState("requests");
   const [bookings, setBookings] = useState(null);
   const [error, setError] = useState("");
@@ -40,7 +41,7 @@ export function AdminDashboard({ session, onSignOut }) {
   return (
     <div className="flex-1 flex flex-col">
       <header className="flex items-center justify-between px-5 py-4 border-b border-[#1D1E21]">
-        <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[14px] font-bold uppercase tracking-wide">{CONFIG.businessName} · Owner</div>
+        <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[14px] font-bold uppercase tracking-wide">{config.businessName} · Owner</div>
         <button onClick={onSignOut} className="flex items-center gap-1.5 text-[12px] text-[#8B8F96] hover:text-[#F5F5F6]"><LogOut size={13} /> Sign out</button>
       </header>
       <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">

@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Home, Building2, Pencil, Receipt } from "lucide-react";
-import { CONFIG } from "../../config.js";
+import { useTenant } from "../../context/TenantContext.jsx";
 import { getNextDays, iso, dayLabel, minutesToDisplay, pgTimeToMinutes, parse12h } from "../../lib/time.js";
 import { fetchServices } from "../../api/services.js";
 import { updateBookingService } from "../../api/bookings.js";
 import { InvoiceModal } from "../../components/InvoiceModal.jsx";
 
 export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
+  const { tenant, config } = useTenant();
   const days = getNextDays(6);
-  const dayStart = parse12h(CONFIG.businessHours.start);
-  const dayEnd = parse12h(CONFIG.businessHours.end);
+  const dayStart = parse12h(config.businessHours.start);
+  const dayEnd = parse12h(config.businessHours.end);
   const totalMin = dayEnd - dayStart;
 
   const [services, setServices] = useState(null);
@@ -17,8 +18,8 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
   const [invoiceBooking, setInvoiceBooking] = useState(null);
 
   useEffect(() => {
-    fetchServices().then(setServices).catch(() => {});
-  }, []);
+    fetchServices(tenant.id).then(setServices).catch(() => {});
+  }, [tenant.id]);
 
   return (
     <div className="space-y-4">

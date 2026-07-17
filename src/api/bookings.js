@@ -1,10 +1,11 @@
 import { supabase } from "../lib/supabaseClient.js";
 
-export async function fetchAvailability(date) {
+export async function fetchAvailability(date, tenantId) {
   const { data, error } = await supabase
     .from("public_availability")
     .select("*")
-    .eq("booking_date", date);
+    .eq("booking_date", date)
+    .eq("tenant_id", tenantId);
   if (error) throw error;
   return data;
 }
