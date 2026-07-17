@@ -87,10 +87,28 @@ alter table public.expenses add column if not exists tenant_id uuid references p
 
 -- ----------------------------------------------------------------------------
 -- 3. Backfill: Apex Auto Detailing becomes tenant #1, all existing data
---    assigned to it. Existing 'admin' role becomes 'business_owner'. This
---    MUST happen before the constraints in step 4, which validate every
---    existing row immediately on creation.
+--    assigned to it. Existing 'admin' role becomes 'business_owner'.
+--
+--    First, drop the OLD role check constraint (it only allowed the
+--    original 'admin'/'customer' values, so renaming 'admin' to
+--    'business_owner' below would violate it if left in place). The new,
+--    widened constraint gets added back in step 4 once the data is
+--    consistent.
 -- ----------------------------------------------------------------------------
+
+do $$
+declare
+  con record;
+begin
+  for con in
+    select conname from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%role%'
+  loop
+    execute format('alter table public.profiles drop constraint %I', con.conname);
+  end loop;
+end $$;
 
 insert into public.tenants (name, slug, industry, tagline, business_hours, booking_granularity_min, mobile_travel_buffer_min, expense_categories, payment_methods)
 select
@@ -119,25 +137,11 @@ update public.expenses set tenant_id = (select id from public.tenants where slug
 -- ----------------------------------------------------------------------------
 -- 4. Now that every row has a consistent value, lock it down: widen the role
 --    check, require a tenant unless potentia_admin, and make tenant_id
---    mandatory on the tenant-scoped tables.
+--    mandatory on the tenant-scoped tables. (The old constraint was already
+--    dropped in step 3, before the backfill needed to violate it.)
 -- ----------------------------------------------------------------------------
 
--- Drop any existing CHECK constraint on profiles.role (name unknown/varies)
--- before adding the widened one.
-do $$
-declare
-  con record;
-begin
-  for con in
-    select conname from pg_constraint
-    where conrelid = 'public.profiles'::regclass
-      and contype = 'c'
-      and pg_get_constraintdef(oid) ilike '%role%'
-  loop
-    execute format('alter table public.profiles drop constraint %I', con.conname);
-  end loop;
-end $$;
-
+alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles
   add constraint profiles_role_check
   check (role in ('potentia_admin','business_owner','staff','customer'));
