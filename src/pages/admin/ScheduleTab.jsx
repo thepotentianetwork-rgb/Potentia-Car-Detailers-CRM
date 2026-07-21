@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Home, Building2, Pencil, Receipt } from "lucide-react";
+import { Home, Building2, Pencil, Receipt, Plus } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { getNextDays, iso, dayLabel, minutesToDisplay, pgTimeToMinutes, parse12h } from "../../lib/time.js";
 import { fetchServices } from "../../api/services.js";
 import { updateBookingService } from "../../api/bookings.js";
 import { InvoiceModal } from "../../components/InvoiceModal.jsx";
+import { ManualBookingForm } from "./ManualBookingForm.jsx";
 
 export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
   const { tenant, config } = useTenant();
@@ -16,6 +17,7 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
   const [services, setServices] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [invoiceBooking, setInvoiceBooking] = useState(null);
+  const [addingBooking, setAddingBooking] = useState(false);
 
   useEffect(() => {
     fetchServices(tenant.id).then(setServices).catch(() => {});
@@ -23,6 +25,13 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
 
   return (
     <div className="space-y-4">
+      <button
+        onClick={() => setAddingBooking(true)}
+        className="w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-[#0A0A0B] bg-[#E4E7EB] hover:bg-white py-2.5 rounded-lg transition-colors"
+      >
+        <Plus size={14} /> Add Booking
+      </button>
+
       {days.map((d) => {
         const key = iso(d);
         const dayBookings = bookings.filter((b) => b.booking_date === key && b.status !== "declined" && b.status !== "cancelled");
@@ -105,6 +114,15 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
       })}
 
       {invoiceBooking && <InvoiceModal booking={invoiceBooking} onClose={() => setInvoiceBooking(null)} />}
+      {addingBooking && (
+        <ManualBookingForm
+          onClose={() => setAddingBooking(false)}
+          onCreated={() => {
+            setAddingBooking(false);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }
