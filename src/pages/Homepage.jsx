@@ -37,13 +37,13 @@ export function Homepage({ onBook }) {
           <img
             src="/potentia-logo.png"
             alt="Potentia"
-            className="w-16 h-16 mx-auto mb-6 object-contain"
+            className="w-12 h-12 mx-auto mb-3 object-contain"
             style={{ filter: "drop-shadow(0 0 24px rgba(160,168,188,0.25))" }}
           />
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#5C5F66] mb-4">Powered by Potentia</p>
           <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[28px] font-extrabold mb-2 leading-tight tracking-tight">
-            Book with Potentia
+            {config.businessName}
           </h1>
-          <p className="text-sm text-[#C9CDD3] font-medium mb-1">{config.businessName}</p>
           {config.tagline && <p className="text-[13px] text-[#8B8F96] mb-8">{config.tagline}</p>}
           {!config.tagline && <div className="mb-8" />}
           <button onClick={onBook} className="bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
