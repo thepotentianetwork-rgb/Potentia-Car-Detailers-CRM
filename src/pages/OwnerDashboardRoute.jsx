@@ -54,5 +54,9 @@ export function OwnerDashboardRoute() {
     );
   }
 
-  return <AdminDashboard session={session} onSignOut={signOut} />;
+  return (
+    <div style={{ fontFamily: "Inter, sans-serif" }} className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex flex-col">
+      <AdminDashboard session={session} onSignOut={signOut} />
+    </div>
+  );
 }
