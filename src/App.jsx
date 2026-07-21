@@ -6,14 +6,12 @@ import { CustomerPortal } from "./pages/CustomerPortal.jsx";
 import { OwnerDashboardRoute } from "./pages/OwnerDashboardRoute.jsx";
 import { PotentiaAdminApp } from "./pages/potentia/PotentiaAdminApp.jsx";
 
-const DEFAULT_TENANT_SLUG = "apex-detailing";
-
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to={`/crm/${DEFAULT_TENANT_SLUG}/portal`} replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<ClientLogin />} />
           <Route path="/crm/admin" element={<PotentiaAdminApp />} />
           <Route

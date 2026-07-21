@@ -29,7 +29,7 @@ export async function fetchMyBookings(userId) {
 export async function fetchAllBookings() {
   const { data, error } = await supabase
     .from("bookings")
-    .select("*,profiles(full_name,phone),services(name)")
+    .select("*,profiles!profile_id(full_name,phone),staff:profiles!staff_id(full_name),services(name)")
     .order("booking_date", { ascending: true })
     .order("start_time", { ascending: true });
   if (error) throw error;
