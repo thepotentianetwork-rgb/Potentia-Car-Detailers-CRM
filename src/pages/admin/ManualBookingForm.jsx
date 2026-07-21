@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { X, Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { fetchServices } from "../../api/services.js";
 import { fetchAvailability, createBooking } from "../../api/bookings.js";
 import { createVehicle } from "../../api/vehicles.js";
-import { fetchTenantCustomers, createGuestCustomer } from "../../api/profiles.js";
+import { fetchTenantCustomers, fetchTenantStaff, createGuestCustomer } from "../../api/profiles.js";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime } from "../../lib/time.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
 export function ManualBookingForm({ onClose, onCreated }) {
   const { tenant, config } = useTenant();
+  const { profile } = useAuth();
   const days = getNextDays(6);
 
   const [customers, setCustomers] = useState(null);
@@ -18,6 +20,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
   const [existingCustomerId, setExistingCustomerId] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+
+  const [staffList, setStaffList] = useState(null);
+  const [staffId, setStaffId] = useState("");
 
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
@@ -39,6 +44,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
     fetchTenantCustomers(tenant.id).then(setCustomers).catch((e) => setError(e.message));
     fetchServices(tenant.id)
       .then((s) => { setServices(s); setServiceId(s[0]?.id); })
+      .catch((e) => setError(e.message));
+    fetchTenantStaff(tenant.id)
+      .then((s) => { setStaffList(s); if (profile && s.some((p) => p.id === profile.id)) setStaffId(profile.id); })
       .catch((e) => setError(e.message));
   }, [tenant.id]);
 
@@ -74,6 +82,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
         profile_id: profileId,
         service_id: service.id,
         vehicle_id: v.id,
+        staff_id: staffId || null,
         tenant_id: tenant.id,
         booking_date: dateKey,
         start_time: minutesToPgTime(startMinutes),
@@ -102,7 +111,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
         <h2 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-lg font-bold mb-4">Add Booking</h2>
         <p className="text-[12px] text-[#8B8F96] mb-5">For a customer who called or texted in — no account needed, but you can still track their history.</p>
 
-        {(!customers || !services) ? (
+        {(!customers || !services || !staffList) ? (
           <LoadingBox center />
         ) : (
           <>
@@ -150,6 +159,19 @@ export function ManualBookingForm({ onClose, onCreated }) {
               className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
               {services.map((s) => <option key={s.id} value={s.id}>{s.name} — ${(s.price_cents / 100).toFixed(0)}</option>)}
             </select>
+
+            <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Detailer</label>
+            {staffList.length === 0 ? (
+              <div className="text-[12px] text-[#5C5F66] mb-5">No staff accounts on file yet.</div>
+            ) : (
+              <select value={staffId} onChange={(e) => setStaffId(e.target.value)}
+                className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
+                <option value="">Unassigned</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>{s.full_name}</option>
+                ))}
+              </select>
+            )}
 
             <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Drop-off or Mobile</label>
             <div className="flex gap-2.5 mb-2">

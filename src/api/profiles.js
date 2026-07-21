@@ -17,6 +17,17 @@ export async function fetchTenantCustomers(tenantId) {
   return data;
 }
 
+export async function fetchTenantStaff(tenantId) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("tenant_id", tenantId)
+    .in("role", ["business_owner", "staff"])
+    .order("full_name", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export async function createGuestCustomer(tenantId, fullName, phone) {
   const { data, error } = await supabase
     .from("profiles")

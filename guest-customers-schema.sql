@@ -41,3 +41,7 @@ create policy "staff create vehicles in their tenant" on public.vehicles
 --    update existing ones.
 create policy "staff create bookings in their tenant" on public.bookings
   for insert with check (is_tenant_staff() and tenant_id = current_tenant_id());
+
+-- 5. Track which staff member/detailer a booking is assigned to.
+alter table public.bookings
+  add column if not exists staff_id uuid references public.profiles(id);
