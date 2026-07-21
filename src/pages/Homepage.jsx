@@ -16,14 +16,40 @@ export function Homepage({ onBook }) {
 
   return (
     <main className="flex-1">
-      <section className="px-6 py-16 text-center max-w-md mx-auto">
-        <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-2xl font-extrabold mb-2 leading-tight">
-          {config.tagline}
-        </h1>
-        <p className="text-[13px] text-[#8B8F96] mb-8">Mobile and drop-off detailing. Book online, track your service history, done.</p>
-        <button onClick={onBook} className="bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
-          Book a Service
-        </button>
+      <section className="relative overflow-hidden min-h-[480px] flex items-center justify-center text-center px-6">
+        <video
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          autoPlay
+          muted
+          loop
+          playsInline
+        >
+          <source src="/potentia-hero-bg.mp4" type="video/mp4" />
+        </video>
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 50% at 50% 50%, transparent 0%, rgba(10,10,11,0.6) 60%, rgba(10,10,11,0.95) 85%, #0A0A0B 100%), linear-gradient(to bottom, #0A0A0B 0%, transparent 25%, transparent 75%, #0A0A0B 100%)",
+          }}
+        />
+        <div className="relative z-10 max-w-md mx-auto py-16">
+          <img
+            src="/potentia-logo.png"
+            alt="Potentia"
+            className="w-16 h-16 mx-auto mb-6 object-contain"
+            style={{ filter: "drop-shadow(0 0 24px rgba(160,168,188,0.25))" }}
+          />
+          <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[28px] font-extrabold mb-2 leading-tight tracking-tight">
+            Book with Potentia
+          </h1>
+          <p className="text-sm text-[#C9CDD3] font-medium mb-1">{config.businessName}</p>
+          {config.tagline && <p className="text-[13px] text-[#8B8F96] mb-8">{config.tagline}</p>}
+          {!config.tagline && <div className="mb-8" />}
+          <button onClick={onBook} className="bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
+            Book a Service
+          </button>
+        </div>
       </section>
       <section className="px-5 pb-12 max-w-md mx-auto">
         <h2 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[12px] font-bold uppercase tracking-wide text-[#8B8F96] mb-3">
