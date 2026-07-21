@@ -1,4 +1,4 @@
-import { Sparkles, LogOut, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 
 export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
@@ -6,8 +6,8 @@ export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
   return (
     <header className="flex items-center justify-between px-5 py-4 border-b border-[#1D1E21]">
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-md bg-gradient-to-br from-[#3A3D42] to-[#17181B] border border-[#3A3D42] flex items-center justify-center">
-          <Sparkles size={16} strokeWidth={2} className="text-[#C9CDD3]" />
+        <div className="w-9 h-9 rounded-md bg-gradient-to-br from-[#3A3D42] to-[#17181B] border border-[#3A3D42] flex items-center justify-center p-1.5">
+          <img src="/potentia-logo.png" alt="Potentia" className="w-full h-full object-contain" />
         </div>
         <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[14px] font-bold tracking-wide uppercase">
           {config.businessName}
