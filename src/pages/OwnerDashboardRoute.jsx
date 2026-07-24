@@ -5,6 +5,7 @@ import { useTenant } from "../context/TenantContext.jsx";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { AdminDashboard } from "./admin/AdminDashboard.jsx";
+import { DealershipDashboard } from "./admin/DealershipDashboard.jsx";
 
 export function OwnerDashboardRoute() {
   const { tenantSlug } = useParams();
@@ -56,7 +57,11 @@ export function OwnerDashboardRoute() {
 
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }} className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex flex-col">
-      <AdminDashboard session={session} onSignOut={signOut} />
+      {tenant.industry === "dealership" ? (
+        <DealershipDashboard session={session} onSignOut={signOut} />
+      ) : (
+        <AdminDashboard session={session} onSignOut={signOut} />
+      )}
     </div>
   );
 }
