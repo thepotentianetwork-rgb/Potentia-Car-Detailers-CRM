@@ -7,8 +7,9 @@ export default async function handler(req, res) {
   }
 
   const { photoUrls, vehicle } = req.body || {};
-  if (!Array.isArray(photoUrls) || photoUrls.length === 0) {
-    res.status(400).json({ error: "photoUrls is required" });
+  const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
+  if (!hasPhotos && !vehicle) {
+    res.status(400).json({ error: "photoUrls or vehicle is required" });
     return;
   }
 
@@ -18,25 +19,42 @@ export default async function handler(req, res) {
     return;
   }
 
-  const imageBlocks = photoUrls.slice(0, 6).map((url) => ({
-    type: "image",
-    source: { type: "url", url },
-  }));
-
   const vehicleContext = vehicle
-    ? `Known details: ${[vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(" ")}.`
+    ? `Known details: ${[vehicle.year, vehicle.make, vehicle.model, vehicle.trim].filter(Boolean).join(" ")}.` +
+      (vehicle.mileage ? ` Mileage: ${vehicle.mileage}.` : "") +
+      (vehicle.condition ? ` Condition: ${vehicle.condition}.` : "") +
+      (vehicle.exteriorColor ? ` Exterior color: ${vehicle.exteriorColor}.` : "") +
+      (vehicle.features ? ` Features: ${vehicle.features}.` : "")
     : "";
 
-  const prompt = `You are helping a car dealership list a vehicle for sale. Look at these photos and extract listing details. ${vehicleContext}
+  let content;
+  if (hasPhotos) {
+    const imageBlocks = photoUrls.slice(0, 6).map((url) => ({
+      type: "image",
+      source: { type: "url", url },
+    }));
+    const prompt = `You are helping a car dealership list a vehicle for sale. Look at these photos and extract listing details. ${vehicleContext}
 
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {
   "exterior_color": "string or null",
   "interior_color": "string or null",
-  "condition": "one short phrase describing visible condition, or null",
+  "condition": "exactly one of: New, Certified Pre-Owned, Excellent, Good, Fair, Poor - or null",
   "features": ["short feature or trim detail", "..."],
   "description": "a compelling 2-3 sentence listing description a buyer would see"
 }`;
+    content = [...imageBlocks, { type: "text", text: prompt }];
+  } else {
+    const prompt = `You are helping a car dealership list a vehicle for sale. No photos are available yet. ${vehicleContext}
+
+Write a compelling 2-3 sentence listing description a buyer would see, based only on the known details above.
+
+Respond with ONLY a JSON object, no other text, in this exact shape:
+{
+  "description": "a compelling 2-3 sentence listing description a buyer would see"
+}`;
+    content = [{ type: "text", text: prompt }];
+  }
 
   try {
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -49,7 +67,7 @@ Respond with ONLY a JSON object, no other text, in this exact shape:
       body: JSON.stringify({
         model: "claude-sonnet-5",
         max_tokens: 1024,
-        messages: [{ role: "user", content: [...imageBlocks, { type: "text", text: prompt }] }],
+        messages: [{ role: "user", content }],
       }),
     });
 

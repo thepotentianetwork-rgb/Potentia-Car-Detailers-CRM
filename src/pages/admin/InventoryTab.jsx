@@ -6,6 +6,8 @@ import { decodeVin } from "../../lib/vin.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
+const CONDITION_OPTIONS = ["New", "Certified Pre-Owned", "Excellent", "Good", "Fair", "Poor"];
+
 const STATUS_LABEL = { for_sale: "For Sale", pending: "Pending", sold: "Sold" };
 const STATUS_COLOR = {
   for_sale: "bg-[#173D22] text-[#5FCB7C]",
@@ -129,6 +131,7 @@ function ListVehicleForm({ onClose, onCreated }) {
   const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -185,6 +188,26 @@ function ListVehicleForm({ onClose, onCreated }) {
       setError(e.message);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const runGenerateDescription = async () => {
+    if (!make.trim() || !model.trim()) { setError("Enter at least make and model first."); return; }
+    setGeneratingDescription(true);
+    setError("");
+    try {
+      const res = await fetch("/api/analyze-vehicle", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ vehicle: { year, make, model, trim, mileage, condition, exteriorColor, features } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI description generation failed.");
+      if (data.description) setDescription(data.description);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setGeneratingDescription(false);
     }
   };
 
@@ -290,14 +313,27 @@ function ListVehicleForm({ onClose, onCreated }) {
         <input value={interiorColor} onChange={(e) => setInteriorColor(e.target.value)} className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-3.5" />
 
         <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Condition</label>
-        <input value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-3.5" />
+        <select value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-3.5">
+          <option value="">Select condition…</option>
+          {CONDITION_OPTIONS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
 
         <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Features (comma-separated)</label>
         <input value={features} onChange={(e) => setFeatures(e.target.value)} className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-3.5" />
 
         <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Listing Description</label>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-          className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5 resize-none" />
+          className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-2.5 resize-none" />
+        <button
+          onClick={runGenerateDescription}
+          disabled={generatingDescription || !make.trim() || !model.trim()}
+          className="w-full flex items-center justify-center gap-1.5 text-[12px] font-semibold text-[#0A0A0B] bg-[#D4AF37] hover:bg-[#E4C158] py-2.5 rounded-lg disabled:opacity-50 mb-5"
+        >
+          {generatingDescription ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          {generatingDescription ? "Writing…" : "Generate Description with AI"}
+        </button>
 
         <button onClick={save} disabled={saving} className="w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-[#0A0A0B] bg-[#E4E7EB] hover:bg-white py-2.5 rounded-lg disabled:opacity-60">
           {saving && <Loader2 size={14} className="animate-spin" />} {saving ? "Saving…" : "List This Car"}
