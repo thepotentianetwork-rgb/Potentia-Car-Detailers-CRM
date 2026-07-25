@@ -32,10 +32,39 @@ export async function deleteVehicle(id, photoPaths) {
   if (error) throw error;
 }
 
+async function compressImage(file, { maxDimension = 1600, quality = 0.82 } = {}) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Image compression produced no output."))),
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
 export async function uploadVehiclePhoto(file, tenantId) {
-  const ext = file.name.split(".").pop();
+  let uploadBlob = file;
+  let ext = file.name.split(".").pop();
+  try {
+    uploadBlob = await compressImage(file);
+    ext = "jpg";
+  } catch {
+    // Fall back to the original file if the browser can't decode/compress it.
+  }
+
   const path = `${tenantId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(PHOTOS_BUCKET).upload(path, file);
+  const { error } = await supabase.storage.from(PHOTOS_BUCKET).upload(path, uploadBlob, { contentType: uploadBlob.type || file.type });
   if (error) throw error;
   return supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
 }
