@@ -5,6 +5,19 @@ import { signOut as apiSignOut } from "../api/auth.js";
 
 const AuthContext = createContext(null);
 
+// Where owners, staff and Potentia admins land after signing out.
+export const AGENCY_SITE_URL = "https://www.potentianetwork.com";
+
+// signOut is wired straight to buttons (onClick={signOut}), so its argument may
+// be a click event rather than options. Events (React or DOM) are never read as
+// options; only a plain object with a redirectTo key can change the destination.
+export function resolveSignOutRedirect(opts) {
+  if (opts == null || typeof opts !== "object") return AGENCY_SITE_URL;
+  const isEvent = "nativeEvent" in opts || (typeof Event !== "undefined" && opts instanceof Event);
+  if (isEvent || !("redirectTo" in opts)) return AGENCY_SITE_URL;
+  return opts.redirectTo;
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -41,10 +54,19 @@ export function AuthProvider({ children }) {
     await loadProfileForSession(session);
   };
 
-  const signOut = async () => {
-    await apiSignOut();
+  // signOut() / onClick={signOut} -> leave the app for the agency site.
+  // signOut({ redirectTo: null }) -> stay on the current page (customer portal,
+  // "wrong account" screens) so the in-place sign-in form re-renders.
+  const signOut = async (opts) => {
+    const redirectTo = resolveSignOutRedirect(opts);
+    try {
+      await apiSignOut();
+    } catch (e) {
+      console.error("Sign-out error (clearing local session anyway):", e);
+    }
     setSession(null);
     setProfile(null);
+    if (redirectTo) window.location.replace(redirectTo);
   };
 
   return (

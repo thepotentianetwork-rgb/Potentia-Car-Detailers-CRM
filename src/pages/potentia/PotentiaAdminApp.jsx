@@ -29,7 +29,7 @@ export function PotentiaAdminApp() {
     return (
       <div className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex flex-col items-center justify-center px-6 text-center">
         <p className="text-sm text-[#8B8F96] mb-4 max-w-xs">This account doesn't have platform admin access.</p>
-        <button onClick={signOut} className="text-[13px] text-[#C9CDD3] underline">Sign out</button>
+        <button onClick={() => signOut({ redirectTo: null })} className="text-[13px] text-[#C9CDD3] underline">Sign out</button>
       </div>
     );
   }
