@@ -5,16 +5,19 @@ import { signOut as apiSignOut } from "../api/auth.js";
 
 const AuthContext = createContext(null);
 
-// Where owners, staff and Potentia admins land after signing out.
-export const AGENCY_SITE_URL = "https://www.potentianetwork.com";
+// Where owners, staff and Potentia admins land after signing out: the Potentia
+// client login page (the in-app /login route, ClientLogin.jsx), so they can sign
+// straight back in. A same-origin path rather than a full URL so preview
+// deployments stay on the preview instead of jumping to production.
+export const SIGN_OUT_PATH = "/login";
 
 // signOut is wired straight to buttons (onClick={signOut}), so its argument may
 // be a click event rather than options. Events (React or DOM) are never read as
 // options; only a plain object with a redirectTo key can change the destination.
 export function resolveSignOutRedirect(opts) {
-  if (opts == null || typeof opts !== "object") return AGENCY_SITE_URL;
+  if (opts == null || typeof opts !== "object") return SIGN_OUT_PATH;
   const isEvent = "nativeEvent" in opts || (typeof Event !== "undefined" && opts instanceof Event);
-  if (isEvent || !("redirectTo" in opts)) return AGENCY_SITE_URL;
+  if (isEvent || !("redirectTo" in opts)) return SIGN_OUT_PATH;
   return opts.redirectTo;
 }
 
@@ -54,7 +57,7 @@ export function AuthProvider({ children }) {
     await loadProfileForSession(session);
   };
 
-  // signOut() / onClick={signOut} -> leave the app for the agency site.
+  // signOut() / onClick={signOut} -> go to the client login page (/login).
   // signOut({ redirectTo: null }) -> stay on the current page (customer portal,
   // "wrong account" screens) so the in-place sign-in form re-renders.
   const signOut = async (opts) => {
