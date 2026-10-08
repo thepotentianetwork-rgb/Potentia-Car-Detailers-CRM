@@ -41,6 +41,10 @@ export function CustomerPortal() {
   };
 
   const wrongTenant = session && profile && profile.role === "customer" && profile.tenant_id !== tenant.id;
+  // Guest booking needs no session. If someone signs in meanwhile, the
+  // signed-in booking flow takes over instead.
+  const bookingAsGuest = screen === "guestBooking" && !session;
+  const bookingSignedIn = (screen === "customerBooking" || screen === "guestBooking") && session && profile && !wrongTenant;
 
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }} className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex flex-col">
@@ -67,7 +71,15 @@ export function CustomerPortal() {
       )}
 
       <ErrorBoundary>
-        {screen === "home" && <Homepage onBook={() => setScreen(session ? "customerBooking" : "auth")} />}
+        {screen === "home" && (
+          <Homepage
+            onBook={() => {
+              if (session) return setScreen("customerBooking");
+              setAuthMode("choose");
+              setScreen("auth");
+            }}
+          />
+        )}
 
         {screen === "auth" && (
           <AuthScreen
@@ -75,13 +87,18 @@ export function CustomerPortal() {
             setMode={setAuthMode}
             onAuthed={async (s) => { await handleAuthed(s); setScreen("customerBooking"); }}
             onBack={() => setScreen("home")}
+            onGuest={() => setScreen("guestBooking")}
             setGlobalError={() => {}}
             tenantSlug={tenantSlug}
           />
         )}
 
-        {screen === "customerBooking" && session && profile && !wrongTenant && (
-          <BookingFlow profile={profile} onConfirm={(b) => { setConfirmedBooking(b); setScreen("confirmed"); }} />
+        {bookingSignedIn && (
+          <BookingFlow onConfirm={(b) => { setConfirmedBooking(b); setScreen("confirmed"); }} />
+        )}
+
+        {bookingAsGuest && (
+          <BookingFlow guest onConfirm={(b) => { setConfirmedBooking(b); setScreen("confirmed"); }} />
         )}
 
         {screen === "confirmed" && confirmedBooking && (
