@@ -45,12 +45,15 @@ vi.mock("../pages/Homepage.jsx", () => ({ Homepage: () => <div>Shop homepage</di
 vi.mock("../pages/BookingFlow.jsx", () => ({ BookingFlow: () => <div>Booking flow</div> }));
 vi.mock("../pages/Confirmed.jsx", () => ({ Confirmed: () => <div>Confirmed</div> }));
 
-import { AuthProvider, useAuth, resolveSignOutRedirect } from "../context/AuthContext.jsx";
+import { AuthProvider, useAuth, resolveSignOutRedirect, SIGN_OUT_PATH } from "../context/AuthContext.jsx";
 import { OwnerDashboardRoute } from "../pages/OwnerDashboardRoute.jsx";
 import { CustomerPortal } from "../pages/CustomerPortal.jsx";
 import { PotentiaAdminApp } from "../pages/potentia/PotentiaAdminApp.jsx";
+import { ClientLogin } from "../pages/ClientLogin.jsx";
 
-const AGENCY = "https://www.potentianetwork.com";
+// Owners/staff/admins land on the Potentia client login (the in-app /login
+// route). A same-origin path, so preview deployments stay on the preview.
+const LOGIN = "/login";
 const APP_URL = "https://crm.example.test/crm/shine/portal";
 
 // --- window.location stub ----------------------------------------------------
@@ -80,9 +83,9 @@ function expectNoNavigation() {
   expect(loc.href).toBe(APP_URL);
 }
 
-function expectAgencyRedirect() {
+function expectLoginRedirect() {
   expect(loc.replace).toHaveBeenCalledTimes(1);
-  expect(loc.replace).toHaveBeenCalledWith(AGENCY);
+  expect(loc.replace).toHaveBeenCalledWith(LOGIN);
   expect(loc.assign).not.toHaveBeenCalled();
   expect(loc.href).toBe(APP_URL);
 }
@@ -124,7 +127,7 @@ describe("owner / staff / admin sign-out", () => {
   it.each([
     ["business owner (detailing dashboard)", "business_owner"],
     ["staff", "staff"],
-  ])("%s: dashboard sign-out redirects to the agency site with location.replace", async (_label, role) => {
+  ])("%s: dashboard sign-out goes to the client login page with location.replace", async (_label, role) => {
     mocks.fetchProfile.mockResolvedValue({ id: "user-1", role, tenant_id: "tenant-1" });
     renderAt("/crm/shine", "/crm/:tenantSlug", <OwnerDashboardRoute />);
 
@@ -132,10 +135,10 @@ describe("owner / staff / admin sign-out", () => {
 
     await waitFor(() => expect(loc.replace).toHaveBeenCalled());
     expect(mocks.authSignOut).toHaveBeenCalledTimes(1);
-    expectAgencyRedirect();
+    expectLoginRedirect();
   });
 
-  it("Potentia admin: dashboard sign-out redirects to the agency site with location.replace", async () => {
+  it("Potentia admin: dashboard sign-out goes to the client login page with location.replace", async () => {
     mocks.fetchProfile.mockResolvedValue({ id: "user-1", role: "potentia_admin", tenant_id: null });
     renderAt("/crm/admin", "/crm/admin", <PotentiaAdminApp />);
 
@@ -143,7 +146,7 @@ describe("owner / staff / admin sign-out", () => {
 
     await waitFor(() => expect(loc.replace).toHaveBeenCalled());
     expect(mocks.authSignOut).toHaveBeenCalledTimes(1);
-    expectAgencyRedirect();
+    expectLoginRedirect();
   });
 
   it("onClick={signOut} (receives a click event, not options) clears the session and redirects", async () => {
@@ -151,7 +154,7 @@ describe("owner / staff / admin sign-out", () => {
     fireEvent.click(screen.getByText("default"));
 
     await screen.findByText("signed-out");
-    expectAgencyRedirect();
+    expectLoginRedirect();
   });
 });
 
@@ -184,7 +187,7 @@ describe("sign-out errors", () => {
     fireEvent.click(screen.getByText("default"));
 
     await screen.findByText("signed-out");
-    expectAgencyRedirect();
+    expectLoginRedirect();
   });
 });
 
@@ -230,13 +233,30 @@ describe("customer portal sign-out", () => {
   });
 });
 
+describe("where owners land after sign-out", () => {
+  it("the sign-out path renders the Potentia client login once the session is gone", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: null } });
+    renderAt(SIGN_OUT_PATH, "/login", <ClientLogin />);
+
+    await screen.findByText("Client Login");
+    expect(screen.getByText("Sign-in form")).toBeTruthy();
+    expectNoNavigation();
+  });
+});
+
 describe("resolveSignOutRedirect (what signOut does with its argument)", () => {
-  it("treats no argument and click events as 'use the default agency redirect'", () => {
-    expect(resolveSignOutRedirect()).toBe(AGENCY);
-    expect(resolveSignOutRedirect({})).toBe(AGENCY);
+  it("treats no argument and click events as 'go to the client login page'", () => {
+    expect(resolveSignOutRedirect()).toBe(LOGIN);
+    expect(resolveSignOutRedirect({})).toBe(LOGIN);
     // Even an event that happens to carry a redirectTo property is not options.
-    expect(resolveSignOutRedirect(Object.assign(new Event("click"), { redirectTo: null }))).toBe(AGENCY);
-    expect(resolveSignOutRedirect({ nativeEvent: {}, type: "click", redirectTo: null })).toBe(AGENCY);
+    expect(resolveSignOutRedirect(Object.assign(new Event("click"), { redirectTo: null }))).toBe(LOGIN);
+    expect(resolveSignOutRedirect({ nativeEvent: {}, type: "click", redirectTo: null })).toBe(LOGIN);
+  });
+
+  it("defaults to the in-app /login path, never an external site", () => {
+    expect(SIGN_OUT_PATH).toBe(LOGIN);
+    expect(resolveSignOutRedirect()).toMatch(/^\/(?!\/)/); // same-origin path, not //host or https://
+    expect(resolveSignOutRedirect()).not.toMatch(/potentianetwork\.com/);
   });
 
   it("honours an explicit options object", () => {

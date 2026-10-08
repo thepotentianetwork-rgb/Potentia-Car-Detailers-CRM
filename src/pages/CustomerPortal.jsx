@@ -32,8 +32,9 @@ export function CustomerPortal() {
     return <Navigate to={profile.role === "potentia_admin" ? "/crm/admin" : `/crm/${tenantSlug}`} replace />;
   }
 
-  // Customers stay on their shop's portal after signing out (potentianetwork.com
-  // is the agency's site, not the detailer's) and go back to the shop homepage.
+  // Customers stay on their shop's portal after signing out (the Potentia client
+  // login is for business owners, not the detailer's customers) and go back to
+  // the shop homepage.
   const handleSignOut = async () => {
     await signOut({ redirectTo: null });
     setConfirmedBooking(null);
