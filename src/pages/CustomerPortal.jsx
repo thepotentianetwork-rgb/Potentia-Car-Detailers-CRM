@@ -10,6 +10,7 @@ import { Homepage } from "./Homepage.jsx";
 import { AuthScreen } from "./AuthScreen.jsx";
 import { BookingFlow } from "./BookingFlow.jsx";
 import { Confirmed } from "./Confirmed.jsx";
+import { useBranding, brandingStyle, useTenantDocument } from "../tenants/branding.js";
 
 export function CustomerPortal() {
   const { tenantSlug } = useParams();
@@ -18,10 +19,12 @@ export function CustomerPortal() {
   const [screen, setScreen] = useState("home");
   const [authMode, setAuthMode] = useState("login");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+  const branding = useBranding();
+  useTenantDocument(branding, tenant.name);
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex items-center justify-center">
+      <div style={brandingStyle(branding)} className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex items-center justify-center">
         <LoadingBox center />
       </div>
     );
@@ -48,7 +51,7 @@ export function CustomerPortal() {
   const bookingSignedIn = (screen === "customerBooking" || screen === "guestBooking") && session && profile && !wrongTenant;
 
   return (
-    <div style={{ fontFamily: "Inter, sans-serif" }} className="min-h-screen bg-[#0A0A0B] text-[#F5F5F6] flex flex-col">
+    <div style={brandingStyle(branding)} className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex flex-col">
       {screen !== "admin" && (
         <Header
           loggedIn={!!session}

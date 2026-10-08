@@ -1,8 +1,8 @@
 export function Field({ icon, ...props }) {
   return (
-    <div className="flex items-center gap-2.5 bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 focus-within:border-[#4A4D53] transition-colors">
-      <span className="text-[#5C5F66]">{icon}</span>
-      <input {...props} className="bg-transparent outline-none text-sm text-[#F5F5F6] placeholder-[#5C5F66] w-full" />
+    <div className="flex items-center gap-2.5 bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3.5 py-2.5 focus-within:border-[var(--brand-border-hover)] transition-colors">
+      <span className="text-[var(--brand-subtle)]">{icon}</span>
+      <input {...props} className="bg-transparent outline-none text-sm text-[var(--brand-text)] placeholder-[var(--brand-subtle)] w-full" />
     </div>
   );
 }

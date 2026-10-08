@@ -5,17 +5,26 @@ import { fetchServices } from "../api/services.js";
 import { fetchAvailability, requestBooking } from "../api/bookings.js";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
+import { useBranding, priceLabel } from "../tenants/branding.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
-const inputCls = "w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none";
-const labelCls = "text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block";
+const inputCls = "w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3.5 py-2.5 text-sm outline-none";
+const labelCls = "text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block";
 
 // Used by signed-in customers and by guests (guest=true, no session). Both
 // book through request_booking(); guests also give name / phone / email / ZIP.
 export function BookingFlow({ guest = false, onConfirm }) {
   const { tenant, config } = useTenant();
-  const days = useMemo(() => getNextDays(6, config.timezone), [config.timezone]);
+  const branding = useBranding();
+  const closedWeekdays = branding.closedWeekdays;
+  // The next 6 days the business is open. Days are local-noon Dates holding
+  // the business's calendar date, so getDay() is the business's weekday.
+  // 14 days covers today..+13, the window request_booking() accepts.
+  const days = useMemo(
+    () => getNextDays(14, config.timezone).filter((d) => !closedWeekdays.includes(d.getDay())).slice(0, 6),
+    [config.timezone, closedWeekdays]
+  );
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
   const [type, setType] = useState("dropoff");
@@ -121,9 +130,9 @@ export function BookingFlow({ guest = false, onConfirm }) {
 
   return (
     <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
-      <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-lg font-bold mb-1">Book a Service</h1>
+      <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-lg font-bold mb-1">Book a Service</h1>
       {guest ? (
-        <p className="text-[13px] text-[#8B8F96] mb-5">No account needed. Pick a time and {config.businessName} will reach out to confirm.</p>
+        <p className="text-[13px] text-[var(--brand-muted)] mb-5">No account needed. Pick a time and {config.businessName} will reach out to confirm.</p>
       ) : (
         <div className="mb-3" />
       )}
@@ -147,7 +156,7 @@ export function BookingFlow({ guest = false, onConfirm }) {
             <div className="flex-1">
               <label htmlFor="guest-zip" className={labelCls}>{type === "mobile" ? "ZIP" : "ZIP (optional)"}</label>
               <input id="guest-zip" inputMode="numeric" maxLength={5} value={guestZip} onChange={(e) => setGuestZip(e.target.value)}
-                placeholder="80202" autoComplete="postal-code" className={inputCls} />
+                placeholder={branding.zipPlaceholder} autoComplete="postal-code" className={inputCls} />
             </div>
           </div>
 
@@ -169,18 +178,18 @@ export function BookingFlow({ guest = false, onConfirm }) {
         </div>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Service</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Service</label>
       <select value={serviceId || ""} onChange={(e) => setServiceId(e.target.value)}
-        className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
-        {services.map((s) => <option key={s.id} value={s.id}>{s.name} — ${(s.price_cents / 100).toFixed(0)}</option>)}
+        className="w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
+        {services.map((s) => <option key={s.id} value={s.id}>{s.name} — {priceLabel(s, branding)}</option>)}
       </select>
 
-      <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Drop-off or Mobile</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Drop-off or Mobile</label>
       <div className="flex gap-2.5 mb-2">
-        <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[#C9CDD3] text-[#F5F5F6]" : "border-[#232529] text-[#8B8F96]"}`}>
+        <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
           <Building2 size={13} /> Drop-off
         </button>
-        <button onClick={() => setType("mobile")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "mobile" ? "border-[#C9CDD3] text-[#F5F5F6]" : "border-[#232529] text-[#8B8F96]"}`}>
+        <button onClick={() => setType("mobile")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "mobile" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
           <Home size={13} /> Mobile
         </button>
       </div>
@@ -188,26 +197,29 @@ export function BookingFlow({ guest = false, onConfirm }) {
         <input aria-label="Address for mobile service" value={mobileAddress} onChange={(e) => setMobileAddress(e.target.value)} placeholder="Address for mobile service"
           autoComplete="street-address" className={`${inputCls} mb-5 mt-2`} />
       )}
-      {type !== "mobile" && <div className="mb-3" />}
+      {type !== "mobile" && branding.contact?.address && (
+        <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">Drop-off at {branding.contact.address}</p>
+      )}
+      {type !== "mobile" && !branding.contact?.address && <div className="mb-3" />}
 
-      <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Date</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Date</label>
       <div className="flex items-center gap-2 mb-5">
-        <button onClick={() => setDayIndex((i) => Math.max(0, i - 1))} disabled={dayIndex === 0} className="p-1.5 border border-[#232529] rounded-md text-[#8B8F96] disabled:opacity-30"><ChevronLeft size={14} /></button>
-        <div className="flex-1 text-center bg-[#111214] border border-[#232529] rounded-lg py-2.5 text-sm font-medium">{dayLabel(selectedDay)}</div>
-        <button onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[#232529] rounded-md text-[#8B8F96] disabled:opacity-30"><ChevronRight size={14} /></button>
+        <button onClick={() => setDayIndex((i) => Math.max(0, i - 1))} disabled={dayIndex === 0} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronLeft size={14} /></button>
+        <div className="flex-1 text-center bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg py-2.5 text-sm font-medium">{dayLabel(selectedDay)}</div>
+        <button onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronRight size={14} /></button>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Available Start Times</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Available Start Times</label>
       {error && <ErrorBox message={error} />}
       {loadingSlots ? (
         <LoadingBox />
       ) : availableStarts.length === 0 ? (
-        <div className="text-center py-8 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg mb-2">No slots long enough for this service on this day.</div>
+        <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">No slots long enough for this service on this day.</div>
       ) : (
         <div className="grid grid-cols-3 gap-2.5 mb-2">
           {availableStarts.map((mins) => (
             <button key={mins} disabled={submitting} onClick={() => submitBooking(mins)}
-              className="flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border border-[#232529] hover:border-[#4A4D53] transition-colors disabled:opacity-50">
+              className="flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border border-[var(--brand-border)] hover:border-[var(--brand-border-hover)] transition-colors disabled:opacity-50">
               <Clock size={12} /> {minutesToDisplay(mins)}
             </button>
           ))}
