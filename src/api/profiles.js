@@ -31,7 +31,9 @@ export async function fetchTenantStaff(tenantId) {
 export async function createGuestCustomer(tenantId, fullName, phone) {
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ tenant_id: tenantId, full_name: fullName, phone: phone || null, role: "customer" })
+    // source 'staff' = entered by the shop for a phone/text booking. Portal
+    // guests are created server-side by request_booking() with source 'guest'.
+    .insert({ tenant_id: tenantId, full_name: fullName, phone: phone || null, role: "customer", source: "staff" })
     .select()
     .single();
   if (error) throw error;

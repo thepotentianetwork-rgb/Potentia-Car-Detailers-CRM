@@ -6,14 +6,14 @@ import { fetchServices } from "../../api/services.js";
 import { fetchAvailability, createBooking } from "../../api/bookings.js";
 import { createVehicle } from "../../api/vehicles.js";
 import { fetchTenantCustomers, fetchTenantStaff, createGuestCustomer } from "../../api/profiles.js";
-import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime } from "../../lib/time.js";
+import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
 export function ManualBookingForm({ onClose, onCreated }) {
   const { tenant, config } = useTenant();
   const { profile } = useAuth();
-  const days = getNextDays(6);
+  const days = useMemo(() => getNextDays(6, config.timezone), [config.timezone]);
 
   const [customers, setCustomers] = useState(null);
   const [customerMode, setCustomerMode] = useState("new");
@@ -39,6 +39,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
   const service = services?.find((s) => s.id === serviceId);
+  // Today, hide slots that already started (business timezone). No lead time
+  // for staff, so a walk-in can still be put in the next open slot.
+  const minStart = earliestStartFor(dateKey, new Date(), config.timezone, 0);
 
   useEffect(() => {
     fetchTenantCustomers(tenant.id).then(setCustomers).catch((e) => setError(e.message));
@@ -60,8 +63,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
 
   const availableStarts = useMemo(() => {
     if (!service) return [];
-    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin);
-  }, [dayBookings, service, type, config]);
+    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
+  }, [dayBookings, service, type, config, minStart]);
 
   const submitBooking = async (startMinutes) => {
     if (customerMode === "new" && !newName.trim()) { setError("Enter the customer's name."); return; }

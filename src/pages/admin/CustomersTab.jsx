@@ -22,6 +22,7 @@ export function CustomersTab({ bookings }) {
           profileId: id,
           name: b.profiles?.full_name || "Customer",
           phone: b.profiles?.phone,
+          isGuest: b.profiles?.source === "guest",
           visits: 0,
           lifetimeSpend: 0,
           lastVisitDate: null,
@@ -58,7 +59,12 @@ function CustomerCard({ customer, vehicles }) {
     <div className="bg-[#111214] border border-[#232529] rounded-lg p-3.5">
       <div className="flex items-start justify-between mb-2">
         <div>
-          <div className="text-sm font-semibold">{customer.name}</div>
+          <div className="text-sm font-semibold flex items-center gap-1.5">
+            {customer.name}
+            {customer.isGuest && (
+              <span style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[9px] font-bold uppercase tracking-wide bg-[#1E2A3D] text-[#8FB3E8] px-1.5 py-0.5 rounded">Guest</span>
+            )}
+          </div>
           {customer.phone && (
             <div className="text-[11px] text-[#8B8F96] flex items-center gap-1 mt-0.5">
               <Phone size={10} /> {customer.phone}

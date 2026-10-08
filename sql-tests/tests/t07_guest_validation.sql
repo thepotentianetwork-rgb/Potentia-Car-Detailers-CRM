@@ -1,0 +1,10 @@
+-- TEST: guest input validation (name, phone, email, ZIP for mobile, address, vehicle) and cross-tenant service
+select sqltest.as_anon();
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','dropoff','2019 Kia Soul',null,null,'Al Guest','555-12',null,null)$q$, sqltest.d(5)), '%10-digit phone%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','dropoff','2019 Kia Soul',null,null,'',      '5552010004',null,null)$q$, sqltest.d(5)), '%your name%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','mobile','2019 Kia Soul',null,'1 Main St','Al Guest','5552010004',null,null)$q$, sqltest.d(5)), '%ZIP code for mobile%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010004',null,'8020')$q$, sqltest.d(5)), '%5-digit ZIP%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','mobile','2019 Kia Soul',null,null,'Al Guest','5552010004',null,'80202')$q$, sqltest.d(5)), '%address for mobile%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','dropoff','',null,null,'Al Guest','5552010004',null,null)$q$, sqltest.d(5)), '%your vehicle%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '13:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010004','not-an-email',null)$q$, sqltest.d(5)), '%valid email%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','bbbbbbbb-0000-0000-0000-000000000001', %s, '13:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010004',null,null)$q$, sqltest.d(5)), '%service isn''t available%');

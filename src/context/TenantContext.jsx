@@ -6,7 +6,11 @@ import { ErrorBox } from "../components/ErrorBox.jsx";
 
 const TenantContext = createContext(null);
 
-function toConfig(tenant) {
+// Businesses without a timezone set (or before the column exists) are in
+// Mountain time, matching the tenants.timezone column default.
+export const DEFAULT_TIMEZONE = "America/Denver";
+
+export function toConfig(tenant) {
   return {
     businessName: tenant.name,
     tagline: tenant.tagline || "",
@@ -15,6 +19,7 @@ function toConfig(tenant) {
     mobileTravelBufferMin: tenant.mobile_travel_buffer_min,
     expenseCategories: tenant.expense_categories,
     paymentMethods: tenant.payment_methods,
+    timezone: tenant.timezone || DEFAULT_TIMEZONE,
   };
 }
 

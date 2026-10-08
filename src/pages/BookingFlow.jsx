@@ -2,22 +2,35 @@ import { useState, useEffect, useMemo } from "react";
 import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
-import { fetchAvailability, createBooking } from "../api/bookings.js";
-import { createVehicle } from "../api/vehicles.js";
-import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime } from "../lib/time.js";
+import { fetchAvailability, requestBooking } from "../api/bookings.js";
+import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
+import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
-export function BookingFlow({ profile, onConfirm }) {
+const inputCls = "w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none";
+const labelCls = "text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block";
+
+// Used by signed-in customers and by guests (guest=true, no session). Both
+// book through request_booking(); guests also give name / phone / email / ZIP.
+export function BookingFlow({ guest = false, onConfirm }) {
   const { tenant, config } = useTenant();
-  const days = getNextDays(6);
+  const days = useMemo(() => getNextDays(6, config.timezone), [config.timezone]);
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
   const [type, setType] = useState("dropoff");
   const [vehicle, setVehicle] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
   const [mobileAddress, setMobileAddress] = useState("");
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestZip, setGuestZip] = useState("");
+  // Honeypot: hidden from people, but form-filling bots tend to fill it in.
+  const [website, setWebsite] = useState("");
   const [dayIndex, setDayIndex] = useState(0);
   const [dayBookings, setDayBookings] = useState([]);
+  const [slotsVersion, setSlotsVersion] = useState(0);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -25,6 +38,9 @@ export function BookingFlow({ profile, onConfirm }) {
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
   const service = services?.find((s) => s.id === serviceId);
+  // Today, hide start times that already passed (plus the lead time) in the
+  // business's timezone; the server enforces the same rule.
+  const minStart = earliestStartFor(dateKey, new Date(), config.timezone);
 
   useEffect(() => {
     fetchServices(tenant.id)
@@ -38,41 +54,64 @@ export function BookingFlow({ profile, onConfirm }) {
       .then(setDayBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoadingSlots(false));
-  }, [dateKey, tenant.id]);
+  }, [dateKey, tenant.id, slotsVersion]);
 
   const availableStarts = useMemo(() => {
     if (!service) return [];
-    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin);
-  }, [dayBookings, service, type, config]);
+    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
+  }, [dayBookings, service, type, config, minStart]);
+
+  const validate = () => {
+    if (guest) {
+      if (guestName.trim().length < 2) return "Enter your name.";
+      if (!normalizePhone(guestPhone)) return "Enter a 10-digit mobile phone number.";
+      if (guestEmail.trim() && !isValidEmail(guestEmail)) return "Enter a valid email or leave it blank.";
+      if (type === "mobile" && !guestZip.trim()) return "Enter your ZIP code for mobile service.";
+      if (guestZip.trim() && !isValidZip(guestZip)) return "Enter a 5-digit ZIP code.";
+    }
+    if (vehicle.trim().length < 2) return "Enter your vehicle (e.g. 2021 Ford F-150).";
+    if (type === "mobile" && mobileAddress.trim().length < 5) return "Enter the address for mobile service.";
+    return "";
+  };
 
   const submitBooking = async (startMinutes) => {
-    if (!vehicle.trim()) { setError("Enter your vehicle (e.g. 2021 Ford F-150)."); return; }
-    if (type === "mobile" && !mobileAddress.trim()) { setError("Enter the address for mobile service."); return; }
+    const problem = validate();
+    if (problem) { setError(problem); return; }
+    const confirmation = {
+      dateLabel: dayLabel(selectedDay),
+      time: minutesToDisplay(startMinutes),
+      service: service.name,
+      type,
+      guest,
+      name: guest ? guestName.trim() : undefined,
+      phone: guest ? formatPhone(guestPhone) : undefined,
+    };
+    // A filled honeypot means a bot: look successful, send nothing.
+    if (guest && website) { onConfirm(confirmation); return; }
     setSubmitting(true);
     setError("");
     try {
-      const v = await createVehicle(profile.id, vehicle.trim(), tenant.id);
-      await createBooking({
-        profile_id: profile.id,
-        service_id: service.id,
-        vehicle_id: v.id,
-        tenant_id: tenant.id,
-        booking_date: dateKey,
-        start_time: minutesToPgTime(startMinutes),
-        duration_min: service.duration_min,
+      await requestBooking({
+        tenantSlug: tenant.slug,
+        serviceId: service.id,
+        bookingDate: dateKey,
+        startTime: minutesToPgTime(startMinutes),
         type,
-        mobile_address: type === "mobile" ? mobileAddress.trim() : null,
-        status: "pending",
-        price_cents: service.price_cents,
+        vehicleLabel: vehicle.trim(),
+        vehicleColor: vehicleColor.trim(),
+        mobileAddress: mobileAddress.trim(),
+        ...(guest && {
+          guestName: guestName.trim(),
+          guestPhone: normalizePhone(guestPhone),
+          guestEmail: guestEmail.trim(),
+          guestZip: guestZip.trim(),
+        }),
       });
-      onConfirm({
-        dateLabel: dayLabel(selectedDay),
-        time: minutesToDisplay(startMinutes),
-        service: service.name,
-        type,
-      });
+      onConfirm(confirmation);
     } catch (e) {
       setError(e.message);
+      // The slot may have just been taken; reload so it disappears.
+      setSlotsVersion((v) => v + 1);
     } finally {
       setSubmitting(false);
     }
@@ -82,11 +121,53 @@ export function BookingFlow({ profile, onConfirm }) {
 
   return (
     <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
-      <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-lg font-bold mb-4">Book a Service</h1>
+      <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-lg font-bold mb-1">Book a Service</h1>
+      {guest ? (
+        <p className="text-[13px] text-[#8B8F96] mb-5">No account needed. Pick a time and {config.businessName} will reach out to confirm.</p>
+      ) : (
+        <div className="mb-3" />
+      )}
 
-      <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Vehicle</label>
-      <input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="e.g. 2021 Ford F-150"
-        className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5" />
+      {guest && (
+        <>
+          <label htmlFor="guest-name" className={labelCls}>Name</label>
+          <input id="guest-name" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="First and last name"
+            autoComplete="name" required className={`${inputCls} mb-3.5`} />
+
+          <label htmlFor="guest-phone" className={labelCls}>Mobile phone</label>
+          <input id="guest-phone" type="tel" inputMode="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)}
+            placeholder="(555) 123-4567" autoComplete="tel" required className={`${inputCls} mb-3.5`} />
+
+          <div className="flex gap-2.5 mb-5">
+            <div className="flex-[2]">
+              <label htmlFor="guest-email" className={labelCls}>Email (optional)</label>
+              <input id="guest-email" type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)}
+                placeholder="you@example.com" autoComplete="email" className={inputCls} />
+            </div>
+            <div className="flex-1">
+              <label htmlFor="guest-zip" className={labelCls}>{type === "mobile" ? "ZIP" : "ZIP (optional)"}</label>
+              <input id="guest-zip" inputMode="numeric" maxLength={5} value={guestZip} onChange={(e) => setGuestZip(e.target.value)}
+                placeholder="80202" autoComplete="postal-code" className={inputCls} />
+            </div>
+          </div>
+
+          <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+            <label htmlFor="guest-website">Website</label>
+            <input id="guest-website" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+          </div>
+        </>
+      )}
+
+      <div className="flex gap-2.5 mb-5">
+        <div className="flex-[2]">
+          <label htmlFor="vehicle" className={labelCls}>Vehicle</label>
+          <input id="vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="e.g. 2021 Ford F-150" className={inputCls} />
+        </div>
+        <div className="flex-1">
+          <label htmlFor="vehicle-color" className={labelCls}>Color (optional)</label>
+          <input id="vehicle-color" maxLength={30} value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder="e.g. Black" className={inputCls} />
+        </div>
+      </div>
 
       <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Service</label>
       <select value={serviceId || ""} onChange={(e) => setServiceId(e.target.value)}
@@ -104,8 +185,8 @@ export function BookingFlow({ profile, onConfirm }) {
         </button>
       </div>
       {type === "mobile" && (
-        <input value={mobileAddress} onChange={(e) => setMobileAddress(e.target.value)} placeholder="Address for mobile service"
-          className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5 mt-2" />
+        <input aria-label="Address for mobile service" value={mobileAddress} onChange={(e) => setMobileAddress(e.target.value)} placeholder="Address for mobile service"
+          autoComplete="street-address" className={`${inputCls} mb-5 mt-2`} />
       )}
       {type !== "mobile" && <div className="mb-3" />}
 
