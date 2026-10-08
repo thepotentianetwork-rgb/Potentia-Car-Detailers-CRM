@@ -51,6 +51,9 @@ export const DEFAULT_BRANDING = {
   // Extra copy per service, keyed by the exact services.name:
   // { from: true (price is a starting price), durationLabel, includes: [] }
   serviceDetails: {},
+  // Formspree form (https://formspree.io/f/<id>) that gets a POST for every
+  // new portal booking request, so the owner gets an email. null = no alert.
+  bookingAlertFormspreeUrl: null,
 };
 
 export const TENANT_BRANDING = {

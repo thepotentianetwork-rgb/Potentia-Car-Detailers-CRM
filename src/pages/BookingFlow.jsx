@@ -6,6 +6,7 @@ import { fetchAvailability, requestBooking } from "../api/bookings.js";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { useBranding, priceLabel } from "../tenants/branding.js";
+import { buildBookingAlert, sendBookingAlert } from "../lib/bookingAlert.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
@@ -14,7 +15,9 @@ const labelCls = "text-[11px] uppercase tracking-wide text-[var(--brand-muted)] 
 
 // Used by signed-in customers and by guests (guest=true, no session). Both
 // book through request_booking(); guests also give name / phone / email / ZIP.
-export function BookingFlow({ guest = false, onConfirm }) {
+// `customer` ({ name, phone, email }) is the signed-in customer, used only for
+// the owner's email alert.
+export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const { tenant, config } = useTenant();
   const branding = useBranding();
   const closedWeekdays = branding.closedWeekdays;
@@ -100,7 +103,7 @@ export function BookingFlow({ guest = false, onConfirm }) {
     setSubmitting(true);
     setError("");
     try {
-      await requestBooking({
+      const created = await requestBooking({
         tenantSlug: tenant.slug,
         serviceId: service.id,
         bookingDate: dateKey,
@@ -116,6 +119,7 @@ export function BookingFlow({ guest = false, onConfirm }) {
           guestZip: guestZip.trim(),
         }),
       });
+      alertOwner(created, startMinutes);
       onConfirm(confirmation);
     } catch (e) {
       setError(e.message);
@@ -123,6 +127,36 @@ export function BookingFlow({ guest = false, onConfirm }) {
       setSlotsVersion((v) => v + 1);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Fire-and-forget email to the owner. The booking is already saved; nothing
+  // here may throw into the booking flow or delay the confirmation.
+  const alertOwner = (created, startMinutes) => {
+    try {
+      const url = branding.bookingAlertFormspreeUrl;
+      if (!url) return;
+      const payload = buildBookingAlert({
+        businessName: config.businessName,
+        guest,
+        customerName: guest ? guestName.trim() : customer?.name,
+        phone: formatPhone(guest ? guestPhone : customer?.phone ?? ""),
+        email: guest ? guestEmail.trim() : customer?.email,
+        zip: guest ? guestZip.trim() : undefined,
+        vehicle: vehicle.trim(),
+        vehicleColor: vehicleColor.trim(),
+        service: service.name,
+        price: priceLabel(service, branding),
+        type,
+        mobileAddress: mobileAddress.trim(),
+        dateKey,
+        time: minutesToDisplay(startMinutes),
+        ownerLink: `${window.location.origin}/crm/${tenant.slug}`,
+        bookingId: created?.booking_id,
+      });
+      sendBookingAlert(url, payload);
+    } catch (e) {
+      console.warn("Booking alert failed:", e?.message || e);
     }
   };
 

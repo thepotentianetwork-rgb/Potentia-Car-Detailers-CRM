@@ -44,6 +44,14 @@ export default {
   // book.html's calendar disables Sundays; the site says "Open Monday – Saturday".
   closedWeekdays: [0],
   zipPlaceholder: "84337",
+  // Email alert to Juan for every new portal booking request (src/lib/bookingAlert.js).
+  // TODO(Nando): form mykaqben ("Detail Submission Form", the one Juan's site
+  // posts to today) currently emails thepotentianetwork@gmail.com, not Juan.
+  // Before go-live, either set that form's notification email to
+  // js07272001@gmail.com (or add Juan as a recipient) in Formspree, or create
+  // a new form for Juan and put its ID here. Formspree must also accept posts
+  // from the CRM's domain (check the form's allowed-domains setting).
+  bookingAlertFormspreeUrl: "https://formspree.io/f/mykaqben",
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",
   // Keyed by services.name in the seed file. Copy, "from" prices and duration
   // labels are from services.html.

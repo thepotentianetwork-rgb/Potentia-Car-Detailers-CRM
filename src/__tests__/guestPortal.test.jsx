@@ -23,9 +23,10 @@ vi.mock("../context/TenantContext.jsx", () => ({
 // booking flow (guest or account) the portal picked.
 vi.mock("../pages/Homepage.jsx", () => ({ Homepage: ({ onBook }) => <button onClick={onBook}>Book a Service</button> }));
 vi.mock("../pages/BookingFlow.jsx", () => ({
-  BookingFlow: ({ guest, onConfirm }) => (
+  BookingFlow: ({ guest, customer, onConfirm }) => (
     <div>
       <div>{guest ? "Guest booking flow" : "Account booking flow"}</div>
+      {customer && <div data-testid="alert-customer">{JSON.stringify(customer)}</div>}
       <button onClick={() => onConfirm({ guest: !!guest, service: "Basic Wash" })}>Pick 2:00 PM</button>
     </div>
   ),
@@ -104,6 +105,17 @@ describe("customer portal: booking without an account", () => {
     fireEvent.click(screen.getByText("Book a Service"));
     expect(await screen.findByText("Account booking flow")).toBeTruthy();
     expect(screen.queryByText("Continue as guest")).toBeNull();
+  });
+
+  it("hands the signed-in customer's details to the booking flow for the owner alert", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: "user-1", email: "carl@example.com" } } } });
+    mocks.fetchProfile.mockResolvedValue({ id: "user-1", role: "customer", tenant_id: "tenant-1", full_name: "Carl Customer", phone: "4355550199", email: null });
+    renderPortal();
+    await screen.findByText("My Account");
+    fireEvent.click(screen.getByText("Book a Service"));
+    const el = await screen.findByTestId("alert-customer");
+    // profiles.email is empty for older accounts, so the login email is used.
+    expect(JSON.parse(el.textContent)).toEqual({ name: "Carl Customer", phone: "4355550199", email: "carl@example.com" });
   });
 });
 

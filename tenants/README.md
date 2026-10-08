@@ -13,7 +13,9 @@ A tenant (one detailing business) is made of three parts:
    `src/tenants/branding.js`. Logo, hero video, fonts, colors, contact info,
    closed weekdays, per-service copy ("From" prices, duration ranges,
    what's included). Assets go in `public/tenants/<slug>/`. Tenants without
-   an entry get the default Potentia look.
+   an entry get the default Potentia look. `bookingAlertFormspreeUrl` there
+   turns on an owner email (via Formspree) for every new portal booking
+   request; see `src/lib/bookingAlert.js`.
 3. **Owner login**: invite the owner's email in Supabase Auth, then set their
    `profiles` row to `role = 'business_owner'` and the tenant's `tenant_id`
    (see the end of a seed file). Public signup only ever makes customers.

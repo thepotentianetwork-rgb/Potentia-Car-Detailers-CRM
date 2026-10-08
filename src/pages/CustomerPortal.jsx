@@ -98,7 +98,10 @@ export function CustomerPortal() {
         )}
 
         {bookingSignedIn && (
-          <BookingFlow onConfirm={(b) => { setConfirmedBooking(b); setScreen("confirmed"); }} />
+          <BookingFlow
+            customer={{ name: profile.full_name, phone: profile.phone, email: profile.email || session.user?.email }}
+            onConfirm={(b) => { setConfirmedBooking(b); setScreen("confirmed"); }}
+          />
         )}
 
         {bookingAsGuest && (
