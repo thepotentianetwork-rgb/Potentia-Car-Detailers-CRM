@@ -1,3 +1,32 @@
 {
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/crm/apex-detailing",
+      "destination": "/previews/apex-detailing.html"
+    },
+    {
+      "source": "/crm/apex-detailing/:path*",
+      "destination": "/previews/apex-detailing.html"
+    },
+    {
+      "source": "/crm/juans-auto-detailing",
+      "destination": "/previews/juans-auto-detailing.html"
+    },
+    {
+      "source": "/crm/juans-auto-detailing/:path*",
+      "destination": "/previews/juans-auto-detailing.html"
+    },
+    {
+      "source": "/crm/route-six-auto",
+      "destination": "/previews/route-six-auto.html"
+    },
+    {
+      "source": "/crm/route-six-auto/:path*",
+      "destination": "/previews/route-six-auto.html"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

@@ -11,6 +11,7 @@ import { StatsTab } from "./StatsTab.jsx";
 import { ExpensesTab } from "./ExpensesTab.jsx";
 import { CustomersTab } from "./CustomersTab.jsx";
 import { InvoicesTab } from "./InvoicesTab.jsx";
+import { BookingLinkCard } from "../../components/BookingLinkCard.jsx";
 
 export function AdminDashboard({ session, onSignOut }) {
   const { tenant, config } = useTenant();
@@ -45,6 +46,7 @@ export function AdminDashboard({ session, onSignOut }) {
         <button onClick={onSignOut} className="flex items-center gap-1.5 text-[12px] text-[#8B8F96] hover:text-[#F5F5F6]"><LogOut size={13} /> Sign out</button>
       </header>
       <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
+        <BookingLinkCard slug={tenant.slug} businessName={config.businessName} />
         {error && <ErrorBox message={error} />}
         {!bookings ? <LoadingBox center /> : (
           <>
