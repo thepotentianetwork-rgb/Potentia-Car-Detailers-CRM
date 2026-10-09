@@ -1,3 +1,5 @@
+// Must run before the client reads (and clears) the invite/recovery URL hash.
+import "./authRedirect.js";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
