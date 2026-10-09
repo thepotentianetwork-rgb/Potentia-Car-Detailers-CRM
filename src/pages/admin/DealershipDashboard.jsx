@@ -4,9 +4,10 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { TabButton } from "../../components/TabButton.jsx";
 import { InventoryTab } from "./InventoryTab.jsx";
 import { ExpensesTab } from "./ExpensesTab.jsx";
+import { BookingLinkCard } from "../../components/BookingLinkCard.jsx";
 
 export function DealershipDashboard({ session, onSignOut }) {
-  const { config } = useTenant();
+  const { tenant, config } = useTenant();
   const [tab, setTab] = useState("inventory");
 
   return (
@@ -16,6 +17,7 @@ export function DealershipDashboard({ session, onSignOut }) {
         <button onClick={onSignOut} className="flex items-center gap-1.5 text-[12px] text-[#8B8F96] hover:text-[#F5F5F6]"><LogOut size={13} /> Sign out</button>
       </header>
       <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
+        <BookingLinkCard slug={tenant.slug} businessName={config.businessName} />
         <div className="flex gap-1 bg-[#111214] border border-[#232529] rounded-lg p-1 mb-5">
           <TabButton active={tab === "inventory"} onClick={() => setTab("inventory")} icon={<Car size={13} />} label="Inventory" />
           <TabButton active={tab === "expenses"} onClick={() => setTab("expenses")} icon={<Receipt size={13} />} label="Expenses" />
