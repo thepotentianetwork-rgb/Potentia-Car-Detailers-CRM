@@ -1,17 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { Phone, Car, DollarSign, CalendarCheck } from "lucide-react";
-import { fetchAllVehicles, updateVehicleNotes } from "../../api/vehicles.js";
+import { fetchTenantVehicles, updateVehicleNotes } from "../../api/vehicles.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 import { dayLabel } from "../../lib/time.js";
 
-export function CustomersTab({ bookings }) {
+export function CustomersTab({ bookings, tenantId }) {
   const [vehicles, setVehicles] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchAllVehicles().then(setVehicles).catch((e) => setError(e.message));
-  }, []);
+    fetchTenantVehicles(tenantId).then(setVehicles).catch((e) => setError(e.message));
+  }, [tenantId]);
 
   const customers = useMemo(() => {
     const byProfile = new Map();

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Trash2, Download, Camera, Image, Loader2 } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { fetchExpenses, createExpense, deleteExpense, uploadReceipt, getReceiptUrl } from "../../api/expenses.js";
+import { fetchTenantExpenses, createExpense, deleteExpense, uploadReceipt, getReceiptUrl } from "../../api/expenses.js";
 import { iso } from "../../lib/time.js";
 import { toCSV, downloadCSV } from "../../lib/csv.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
@@ -17,9 +17,9 @@ export function ExpensesTab({ userId }) {
   const [monthOffset, setMonthOffset] = useState(0);
 
   const load = () => {
-    fetchExpenses().then(setExpenses).catch((e) => setError(e.message));
+    fetchTenantExpenses(tenant.id).then(setExpenses).catch((e) => setError(e.message));
   };
-  useEffect(load, []);
+  useEffect(load, [tenant.id]);
 
   const now = new Date();
   const viewMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);

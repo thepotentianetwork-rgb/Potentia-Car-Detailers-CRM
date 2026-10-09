@@ -1,11 +1,14 @@
 import { supabase } from "../lib/supabaseClient.js";
+import { requireTenantId } from "./tenantScope.js";
 
 const RECEIPTS_BUCKET = "receipts";
 
-export async function fetchExpenses() {
+export async function fetchTenantExpenses(tenantId) {
+  requireTenantId(tenantId);
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
+    .eq("tenant_id", tenantId)
     .order("expense_date", { ascending: false });
   if (error) throw error;
   return data;
