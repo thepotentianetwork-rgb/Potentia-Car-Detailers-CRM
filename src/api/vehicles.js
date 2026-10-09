@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient.js";
+import { requireTenantId } from "./tenantScope.js";
 
 export async function createVehicle(profileId, label, tenantId) {
   const { data, error } = await supabase
@@ -10,8 +11,9 @@ export async function createVehicle(profileId, label, tenantId) {
   return data;
 }
 
-export async function fetchAllVehicles() {
-  const { data, error } = await supabase.from("vehicles").select("*");
+export async function fetchTenantVehicles(tenantId) {
+  requireTenantId(tenantId);
+  const { data, error } = await supabase.from("vehicles").select("*").eq("tenant_id", tenantId);
   if (error) throw error;
   return data;
 }

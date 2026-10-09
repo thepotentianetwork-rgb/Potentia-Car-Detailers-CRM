@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 
-const mocks = vi.hoisted(() => ({ fetchAllVehicles: vi.fn(), updateVehicleNotes: vi.fn() }));
-vi.mock("../api/vehicles.js", () => ({ fetchAllVehicles: mocks.fetchAllVehicles, updateVehicleNotes: mocks.updateVehicleNotes }));
+const mocks = vi.hoisted(() => ({ fetchTenantVehicles: vi.fn(), updateVehicleNotes: vi.fn() }));
+vi.mock("../api/vehicles.js", () => ({ fetchTenantVehicles: mocks.fetchTenantVehicles, updateVehicleNotes: mocks.updateVehicleNotes }));
 
 import { RequestsTab } from "../pages/admin/RequestsTab.jsx";
 import { CustomersTab } from "../pages/admin/CustomersTab.jsx";
@@ -88,10 +88,11 @@ describe("owner Requests tab", () => {
 
 describe("owner Customers tab", () => {
   it("marks guest customers with a Guest badge", async () => {
-    mocks.fetchAllVehicles.mockResolvedValue([]);
-    render(<CustomersTab bookings={[guestMobile, accountDropoff]} />);
+    mocks.fetchTenantVehicles.mockResolvedValue([]);
+    render(<CustomersTab bookings={[guestMobile, accountDropoff]} tenantId="t-apex" />);
     await screen.findByText("Gina Guest");
     expect(within(card("Gina Guest")).getByText("Guest")).toBeTruthy();
     expect(within(card("Carl Customer")).queryByText("Guest")).toBeNull();
+    expect(mocks.fetchTenantVehicles).toHaveBeenCalledWith("t-apex");
   });
 });

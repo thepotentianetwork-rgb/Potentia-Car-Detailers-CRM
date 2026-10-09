@@ -6,7 +6,7 @@ vi.mock("../lib/supabaseClient.js", () => ({ supabase: {} }));
 vi.mock("../context/TenantContext.jsx", () => ({
   useTenant: () => ({ tenant: mocks.tenant, config: { businessName: mocks.name } }),
 }));
-vi.mock("../api/bookings.js", () => ({ fetchAllBookings: vi.fn(() => Promise.resolve([])), updateBookingStatus: vi.fn() }));
+vi.mock("../api/bookings.js", () => ({ fetchTenantBookings: vi.fn(() => Promise.resolve([])), updateBookingStatus: vi.fn() }));
 vi.mock("../pages/admin/RequestsTab.jsx", () => ({ RequestsTab: () => <div>Requests tab</div> }));
 vi.mock("../pages/admin/InventoryTab.jsx", () => ({ InventoryTab: () => <div>Inventory</div> }));
 

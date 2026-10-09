@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient.js";
+import { requireTenantId } from "./tenantScope.js";
 
 export async function fetchAvailability(date, tenantId) {
   const { data, error } = await supabase
@@ -53,12 +54,16 @@ export async function fetchMyBookings(userId) {
   return data;
 }
 
-export async function fetchAllBookings() {
+// Every booking for one business (owner dashboard: requests, schedule,
+// stats, customers, invoices).
+export async function fetchTenantBookings(tenantId) {
+  requireTenantId(tenantId);
   const { data, error } = await supabase
     .from("bookings")
     .select(
       "*,profiles!profile_id(full_name,phone,email,zip,source),staff:profiles!staff_id(full_name),services(name),vehicles(label,color)"
     )
+    .eq("tenant_id", tenantId)
     .order("booking_date", { ascending: true })
     .order("start_time", { ascending: true });
   if (error) throw error;

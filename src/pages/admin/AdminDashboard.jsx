@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users, FileText } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { fetchAllBookings, updateBookingStatus } from "../../api/bookings.js";
+import { fetchTenantBookings, updateBookingStatus } from "../../api/bookings.js";
 import { TabButton } from "../../components/TabButton.jsx";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
@@ -21,9 +21,12 @@ export function AdminDashboard({ session, onSignOut }) {
   const [busyId, setBusyId] = useState(null);
 
   const load = () => {
-    fetchAllBookings().then(setBookings).catch((e) => setError(e.message));
+    fetchTenantBookings(tenant.id).then(setBookings).catch((e) => setError(e.message));
   };
-  useEffect(load, []);
+  useEffect(() => {
+    setBookings(null);
+    load();
+  }, [tenant.id]);
 
   const act = async (id, status) => {
     setBusyId(id);
@@ -64,7 +67,7 @@ export function AdminDashboard({ session, onSignOut }) {
             {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} />}
             {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} onRefresh={load} />}
             {tab === "stats" && <StatsTab bookings={bookings} />}
-            {tab === "customers" && <CustomersTab bookings={bookings} />}
+            {tab === "customers" && <CustomersTab bookings={bookings} tenantId={tenant.id} />}
             {tab === "invoices" && <InvoicesTab bookings={bookings} onRefresh={load} />}
             {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
           </>

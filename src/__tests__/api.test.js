@@ -21,7 +21,9 @@ vi.mock("../lib/supabaseClient.js", () => {
   };
 });
 
-import { requestBooking, fetchAllBookings } from "../api/bookings.js";
+import { requestBooking, fetchTenantBookings } from "../api/bookings.js";
+import { fetchTenantExpenses } from "../api/expenses.js";
+import { fetchTenantVehicles } from "../api/vehicles.js";
 import { createGuestCustomer } from "../api/profiles.js";
 import { signUp } from "../api/auth.js";
 import { toConfig } from "../context/TenantContext.jsx";
@@ -66,10 +68,10 @@ describe("requestBooking()", () => {
   });
 });
 
-describe("fetchAllBookings()", () => {
+describe("fetchTenantBookings()", () => {
   it("loads guest contact info and the vehicle for the owner's Requests tab", async () => {
     calls.result = { data: [], error: null };
-    await fetchAllBookings();
+    await fetchTenantBookings("t-1");
     const select = calls.list.find((c) => c.table === "bookings" && c.m === "select").args[0];
     expect(select).toMatch(/profiles!profile_id\(full_name,phone,email,zip,source\)/);
     expect(select).toMatch(/vehicles\(label,color\)/);
@@ -103,5 +105,31 @@ describe("tenant config", () => {
     expect(toConfig({ name: "Shine", timezone: "America/Phoenix" }).timezone).toBe("America/Phoenix");
     expect(toConfig({ name: "Shine" }).timezone).toBe("America/Denver");
     expect(toConfig({ name: "Shine", timezone: null }).timezone).toBe("America/Denver");
+  });
+});
+
+// The Potentia admin can read every business under RLS, so the owner
+// dashboard's reads must filter by the business in the URL themselves.
+describe("owner dashboard reads are scoped to one business", () => {
+  it.each([
+    ["bookings", fetchTenantBookings],
+    ["expenses", fetchTenantExpenses],
+    ["vehicles", fetchTenantVehicles],
+  ])("%s: filters on tenant_id", async (table, fn) => {
+    calls.list = [];
+    calls.result = { data: [], error: null };
+    await fn("t-juan");
+    const eqs = calls.list.filter((c) => c.table === table && c.m === "eq").map((c) => c.args);
+    expect(eqs).toContainEqual(["tenant_id", "t-juan"]);
+  });
+
+  it.each([
+    ["bookings", fetchTenantBookings],
+    ["expenses", fetchTenantExpenses],
+    ["vehicles", fetchTenantVehicles],
+  ])("%s: refuses to run without a business id", async (table, fn) => {
+    calls.list = [];
+    await expect(fn(undefined)).rejects.toThrow(/business id/);
+    expect(calls.list.some((c) => c.table === table && c.m === "select")).toBe(false);
   });
 });
