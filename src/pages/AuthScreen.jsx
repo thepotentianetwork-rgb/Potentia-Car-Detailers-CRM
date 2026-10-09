@@ -48,11 +48,11 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
   if (needsConfirm) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-xl font-bold mb-2">Check your email</h1>
-        <p className="text-sm text-[#8B8F96] max-w-xs mb-6">We sent a confirmation link to {email}. Confirm it, then sign in.</p>
+        <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-2">Check your email</h1>
+        <p className="text-sm text-[var(--brand-muted)] max-w-xs mb-6">We sent a confirmation link to {email}. Confirm it, then sign in.</p>
         <button
           onClick={() => { setNeedsConfirm(false); setMode("login"); }}
-          className="bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm px-6 py-2.5 rounded-lg"
+          className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm px-6 py-2.5 rounded-lg"
         >
           Go to Sign In
         </button>
@@ -64,24 +64,24 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="bg-[#111214] border border-[#232529] rounded-xl p-6">
-            <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-xl font-bold mb-1">Book a service</h1>
-            <p className="text-sm text-[#8B8F96] mb-6">Book as a guest, or create an account to keep your vehicle and history in one place.</p>
+          <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
+            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">Book a service</h1>
+            <p className="text-sm text-[var(--brand-muted)] mb-6">Book as a guest, or create an account to keep your vehicle and history in one place.</p>
             <div className="space-y-2.5">
               {onGuest && (
-                <button onClick={onGuest} className="w-full bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm py-2.5 rounded-lg transition-colors">
+                <button onClick={onGuest} className="w-full bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm py-2.5 rounded-lg transition-colors">
                   Continue as guest
                 </button>
               )}
-              <button onClick={() => setMode("signup")} className="w-full border border-[#2A2C30] hover:border-[#4A4D53] text-[#F5F5F6] font-semibold text-sm py-2.5 rounded-lg transition-colors">
+              <button onClick={() => setMode("signup")} className="w-full border border-[var(--brand-border-strong)] hover:border-[var(--brand-border-hover)] text-[var(--brand-text)] font-semibold text-sm py-2.5 rounded-lg transition-colors">
                 Create an account
               </button>
             </div>
-            <button onClick={() => setMode("login")} className="w-full text-center text-[13px] text-[#8B8F96] hover:text-[#C9CDD3] mt-5">
+            <button onClick={() => setMode("login")} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-5">
               Already have an account? Sign in
             </button>
           </div>
-          <button onClick={onBack} className="w-full text-center text-[13px] text-[#5C5F66] hover:text-[#8B8F96] mt-4">Back to homepage</button>
+          <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">Back to homepage</button>
         </div>
       </div>
     );
@@ -90,9 +90,9 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
-        <div className="bg-[#111214] border border-[#232529] rounded-xl p-6">
-          <h1 style={{ fontFamily: "Montserrat, sans-serif" }} className="text-xl font-bold mb-1">{isLogin ? "Sign in" : "Create your account"}</h1>
-          <p className="text-sm text-[#8B8F96] mb-6">{isLogin ? "Book services and track your detail history." : "Save your vehicle info and see every detail we've done."}</p>
+        <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
+          <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">{isLogin ? "Sign in" : "Create your account"}</h1>
+          <p className="text-sm text-[var(--brand-muted)] mb-6">{isLogin ? "Book services and track your detail history." : "Save your vehicle info and see every detail we've done."}</p>
           <form onSubmit={submit} className="space-y-3.5">
             {!isLogin && <Field icon={<User size={15} />} placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
             <Field icon={<User size={15} />} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -104,23 +104,23 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
             )}
             <Field icon={<User size={15} />} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             {error && <p className="text-[13px] text-[#E08A8A]">{error}</p>}
-            <button type="submit" disabled={loading} className="w-full mt-2 bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <button type="submit" disabled={loading} className="w-full mt-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {loading && <Loader2 size={14} className="animate-spin" />}
               {isLogin ? "Sign in" : "Create account"}
             </button>
           </form>
           {allowSignup && (
-            <button onClick={() => setMode(isLogin ? "signup" : "login")} className="w-full text-center text-[13px] text-[#8B8F96] hover:text-[#C9CDD3] mt-5">
+            <button onClick={() => setMode(isLogin ? "signup" : "login")} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-5">
               {isLogin ? "New here? Create an account" : "Already have an account? Sign in"}
             </button>
           )}
           {onGuest && (
-            <button onClick={onGuest} className="w-full text-center text-[13px] text-[#8B8F96] hover:text-[#C9CDD3] mt-3">
+            <button onClick={onGuest} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-3">
               Or continue as guest
             </button>
           )}
         </div>
-        <button onClick={onBack} className="w-full text-center text-[13px] text-[#5C5F66] hover:text-[#8B8F96] mt-4">Back to homepage</button>
+        <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">Back to homepage</button>
       </div>
     </div>
   );

@@ -4,6 +4,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Portal theme. Defaults are the Potentia look; the customer portal overrides
+   them per tenant (src/tenants/branding.js -> brandingStyle()). */
+:root {
+  --brand-bg: #0A0A0B;
+  --brand-surface: #111214;
+  --brand-input: #0D0E10;
+  --brand-border: #232529;
+  --brand-divider: #1D1E21;
+  --brand-border-strong: #2A2C30;
+  --brand-border-hover: #4A4D53;
+  --brand-text: #F5F5F6;
+  --brand-muted: #8B8F96;
+  --brand-subtle: #5C5F66;
+  --brand-soft: #C9CDD3;
+  --brand-primary: #E4E7EB;
+  --brand-primary-hover: #FFFFFF;
+  --brand-on-primary: #0A0A0B;
+  --brand-font-heading: Montserrat, sans-serif;
+  --brand-font-body: Inter, sans-serif;
+}
+
 html, body {
   background-color: #0A0A0B;
 }
