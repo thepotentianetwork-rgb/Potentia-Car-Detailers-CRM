@@ -40,6 +40,7 @@ export function OwnerDashboardRoute() {
           onAuthed={handleAuthed}
           onBack={() => {}}
           setGlobalError={() => {}}
+          tenantSlug={tenantSlug}
           allowSignup={false}
         />
       </div>

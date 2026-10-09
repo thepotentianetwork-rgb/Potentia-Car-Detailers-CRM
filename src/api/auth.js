@@ -18,6 +18,19 @@ export async function signIn(email, password) {
   return data;
 }
 
+// Emails a password-reset link that opens redirectTo (our /set-password page).
+export async function requestPasswordReset(email, redirectTo) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+// Sets the password for the signed-in user (after an invite/recovery link).
+export async function updatePassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;

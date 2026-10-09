@@ -3,8 +3,9 @@ import { User, Phone, MapPin, Loader2 } from "lucide-react";
 import { signIn, signUp } from "../api/auth.js";
 import { normalizePhone, isValidZip } from "../lib/contact.js";
 import { Field } from "../components/Field.jsx";
+import { ForgotPasswordForm } from "../components/ForgotPasswordForm.jsx";
 
-// mode: "login" | "signup" | "choose". "choose" is the customer portal's
+// mode: "login" | "signup" | "choose" | "forgot". "choose" is the customer portal's
 // "how do you want to book?" screen; it needs onGuest.
 export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, tenantSlug, allowSignup = true, onGuest }) {
   const [fullName, setFullName] = useState("");
@@ -60,6 +61,20 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
     );
   }
 
+  if (mode === "forgot") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
+            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">Reset your password</h1>
+            <p className="text-sm text-[var(--brand-muted)] mb-6">Enter your email and we'll send you a link to set a new password.</p>
+            <ForgotPasswordForm business={tenantSlug} initialEmail={email} onBack={() => setMode("login")} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (mode === "choose") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
@@ -103,6 +118,13 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
               </>
             )}
             <Field icon={<User size={15} />} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            {isLogin && (
+              <div className="flex justify-end -mt-1">
+                <button type="button" onClick={() => { setError(""); setMode("forgot"); }} className="text-[12px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)]">
+                  Forgot password?
+                </button>
+              </div>
+            )}
             {error && <p className="text-[13px] text-[#E08A8A]">{error}</p>}
             <button type="submit" disabled={loading} className="w-full mt-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {loading && <Loader2 size={14} className="animate-spin" />}

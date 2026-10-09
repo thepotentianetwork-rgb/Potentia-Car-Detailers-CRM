@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient.js";
 import { fetchProfile } from "../api/profiles.js";
 import { signOut as apiSignOut } from "../api/auth.js";
+import { getPendingAuthLink, clearPendingAuthLink } from "../lib/authRedirect.js";
 
 const AuthContext = createContext(null);
 
@@ -26,6 +27,8 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [profileError, setProfileError] = useState("");
+  // Invite / password-recovery link this page was opened with (see authRedirect.js).
+  const [authLink, setAuthLink] = useState(getPendingAuthLink);
 
   const loadProfileForSession = async (session) => {
     try {
@@ -43,7 +46,8 @@ export function AuthProvider({ children }) {
       setCheckingSession(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setAuthLink({ type: "recovery", error: null });
       setSession(session);
       if (!session) setProfile(null);
     });
@@ -72,8 +76,13 @@ export function AuthProvider({ children }) {
     if (redirectTo) window.location.replace(redirectTo);
   };
 
+  const clearAuthLink = () => {
+    clearPendingAuthLink();
+    setAuthLink({ type: null, error: null });
+  };
+
   return (
-    <AuthContext.Provider value={{ session, profile, checkingSession, profileError, handleAuthed, signOut }}>
+    <AuthContext.Provider value={{ session, profile, checkingSession, profileError, handleAuthed, signOut, authLink, clearAuthLink }}>
       {children}
     </AuthContext.Provider>
   );
