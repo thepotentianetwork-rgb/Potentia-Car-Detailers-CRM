@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { X, Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { fetchServices, fetchAddons } from "../../api/services.js";
+import { fetchServices } from "../../api/services.js";
 import { fetchAvailability, createManualBooking } from "../../api/bookings.js";
 import { fetchTenantCustomers, fetchTenantStaff } from "../../api/profiles.js";
-import { addonTotals, dollars, minutesText } from "../../lib/addons.js";
-import { AddonChecklist } from "../../components/AddonChecklist.jsx";
+import { dollars, minutesText } from "../../lib/addons.js";
+import { serviceTotals } from "../../lib/bookingServices.js";
+import { ServicePicker } from "../../components/ServicePicker.jsx";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
@@ -26,9 +27,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
   const [staffId, setStaffId] = useState("");
 
   const [services, setServices] = useState(null);
-  const [serviceId, setServiceId] = useState(null);
-  const [addons, setAddons] = useState([]);
-  const [addonIds, setAddonIds] = useState([]);
+  const [serviceIds, setServiceIds] = useState([]);
   const [vehicle, setVehicle] = useState("");
   const [type, setType] = useState("dropoff");
   const [mobileAddress, setMobileAddress] = useState("");
@@ -41,9 +40,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
 
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
-  const service = services?.find((s) => s.id === serviceId);
-  // Slots must fit the whole job: service + every checked add-on.
-  const totals = addonTotals(service, addons, addonIds);
+  // Slots must fit the whole job: every checked service.
+  const totals = serviceTotals(services, serviceIds);
+  const picked = totals.selected.length > 0;
   // Today, hide slots that already started (business timezone). No lead time
   // for staff, so a walk-in can still be put in the next open slot.
   const minStart = earliestStartFor(dateKey, new Date(), config.timezone, 0);
@@ -51,12 +50,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
   useEffect(() => {
     fetchTenantCustomers(tenant.id).then(setCustomers).catch((e) => setError(e.message));
     fetchServices(tenant.id)
-      .then((s) => { setServices(s); setServiceId(s[0]?.id); })
+      .then((s) => { setServices(s); setServiceIds(s[0] ? [s[0].id] : []); })
       .catch((e) => setError(e.message));
-    Promise.resolve()
-      .then(() => fetchAddons(tenant.id))
-      .then((a) => setAddons(a || []))
-      .catch(() => setAddons([]));
     fetchTenantStaff(tenant.id)
       .then((s) => { setStaffList(s); if (profile && s.some((p) => p.id === profile.id)) setStaffId(profile.id); })
       .catch((e) => setError(e.message));
@@ -71,11 +66,12 @@ export function ManualBookingForm({ onClose, onCreated }) {
   }, [dateKey, tenant.id]);
 
   const availableStarts = useMemo(() => {
-    if (!service) return [];
+    if (!picked) return [];
     return getAvailableStarts(dayBookings, totals.durationMin, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
-  }, [dayBookings, service, totals.durationMin, type, config, minStart]);
+  }, [dayBookings, picked, totals.durationMin, type, config, minStart]);
 
   const submitBooking = async (startMinutes) => {
+    if (!picked) { setError("Pick at least one service."); return; }
     if (customerMode === "new" && !newName.trim()) { setError("Enter the customer's name."); return; }
     if (customerMode === "existing" && !existingCustomerId) { setError("Select a customer."); return; }
     if (!vehicle.trim()) { setError("Enter their vehicle (e.g. 2021 Ford F-150)."); return; }
@@ -84,11 +80,11 @@ export function ManualBookingForm({ onClose, onCreated }) {
     setSubmitting(true);
     setError("");
     try {
-      // One server call: customer, vehicle, approved booking and add-ons are
+      // One server call: customer, vehicle, approved booking and services are
       // saved together (or not at all), and the slot is re-checked.
       await createManualBooking({
         tenantId: tenant.id,
-        serviceId: service.id,
+        serviceIds: totals.selected.map((s) => s.id),
         bookingDate: dateKey,
         startTime: minutesToPgTime(startMinutes),
         type,
@@ -98,7 +94,6 @@ export function ManualBookingForm({ onClose, onCreated }) {
         newPhone: customerMode === "new" ? newPhone.trim() : null,
         staffId: staffId || null,
         mobileAddress: mobileAddress.trim(),
-        addonIds: totals.selected.map((a) => a.id),
       });
       onCreated();
     } catch (e) {
@@ -162,17 +157,10 @@ export function ManualBookingForm({ onClose, onCreated }) {
             <input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="e.g. 2021 Ford F-150"
               className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5" />
 
-            <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Service</label>
-            <select value={serviceId || ""} onChange={(e) => setServiceId(e.target.value)}
-              className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
-              {services.map((s) => <option key={s.id} value={s.id}>{s.name} — ${(s.price_cents / 100).toFixed(0)}</option>)}
-            </select>
-            <AddonChecklist addons={addons} selectedIds={addonIds} onChange={setAddonIds} className="-mt-3 mb-3" />
-            {service && (
-              <div data-testid="manual-total" className="text-[12px] text-[#8B8F96] mb-5">
-                Total: {dollars(totals.priceCents)} · {minutesText(totals.durationMin)}
-              </div>
-            )}
+            <ServicePicker services={services} selectedIds={serviceIds} onChange={setServiceIds} variant="admin" className="mb-2" />
+            <div data-testid="manual-total" className="text-[12px] text-[#8B8F96] mb-5">
+              {picked ? `Total: ${dollars(totals.priceCents)} · ${minutesText(totals.durationMin)}` : "Pick at least one service."}
+            </div>
 
             <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Detailer</label>
             {staffList.length === 0 ? (
@@ -214,9 +202,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
             {loadingSlots ? (
               <LoadingBox />
             ) : availableStarts.length === 0 ? (
-              <div className="text-center py-8 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg mb-2">{totals.selected.length > 0
-                  ? `No open time on this day fits this service plus add-ons (${minutesText(totals.durationMin)}).`
-                  : "No slots long enough for this service on this day."}</div>
+              <div className="text-center py-8 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg mb-2">{!picked
+                  ? "Pick at least one service to see open times."
+                  : `No open time on this day fits ${minutesText(totals.durationMin)}.`}</div>
             ) : (
               <div className="grid grid-cols-3 gap-2.5 mb-2">
                 {availableStarts.map((mins) => (

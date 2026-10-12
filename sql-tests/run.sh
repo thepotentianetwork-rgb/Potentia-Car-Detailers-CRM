@@ -2,8 +2,8 @@
 # SQL tests for the booking migrations, run against a THROWAWAY local
 # Postgres (never the live Supabase database). See README.md.
 #
-#   ./run.sh                  live-state mock -> apply services-addons migration -> run tests
-#   ./run.sh --no-migration   same, without services-addons-migration.sql (shows its tests failing)
+#   ./run.sh                  live-state mock -> apply multiservice migration -> run tests
+#   ./run.sh --no-migration   same, without multiservice-migration.sql (shows its tests failing)
 #
 # Env: SQLTEST_PSQL  psql command   (default: "sudo -u postgres psql")
 #      SQLTEST_DB    database name  (default: crm_guest_test; dropped and recreated)
@@ -11,7 +11,8 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 GUEST=../guest-booking-migration.sql
-MIGRATION=../services-addons-migration.sql
+ADDONS=../services-addons-migration.sql
+MIGRATION=../multiservice-migration.sql
 export DB=${SQLTEST_DB:-crm_guest_test}
 export PSQL=${SQLTEST_PSQL:-"sudo -u postgres psql"}
 
@@ -38,7 +39,12 @@ cat setup/00_mock_live_schema.sql setup/01_seed.sql setup/02_helpers.sql | psql_
 psql_q -d "$DB" -f "$GUEST" >/dev/null 2>&1 || { echo "guest-booking migration failed to apply" >&2; exit 2; }
 part5=$(sed -n '/^-- PART 5\./,$p' "$GUEST" | sed -n 's/^-- \(drop policy .*\)$/\1/p')
 echo "$part5" | psql_q -d "$DB" >/dev/null 2>&1 || { echo "guest-booking PART 5 failed" >&2; exit 2; }
-echo "Mock = live state: $GUEST PARTS 0-5"
+# services-addons-migration.sql (sections 1-6) is live too.
+psql_q -d "$DB" -f "$ADDONS" >/dev/null 2>&1 || { echo "services-addons migration failed to apply" >&2; exit 2; }
+# History that exists before the multiservice migration (a past booking
+# with a booking_addons row), so tests can prove the migration leaves it alone.
+psql_q -d "$DB" -f setup/03_pre_multiservice_history.sql >/dev/null 2>&1 || { echo "history seed failed" >&2; exit 2; }
+echo "Mock = live state: $GUEST PARTS 0-5 + $ADDONS sections 1-6"
 
 if [ $with_migration = 1 ]; then
   psql_q -d "$DB" -f "$MIGRATION" >/dev/null 2>&1 || { echo "migration failed to apply:" >&2; psql_q -d "$DB" -f "$MIGRATION" 2>&1 | grep -i error >&2; exit 2; }
@@ -62,8 +68,9 @@ run_test() {
 }
 
 # Tests run in file-name order and share one database (later tests build on
-# earlier ones), each in its own psql session. t* = guest booking (still
-# hold after the add-ons migration), u* = services, add-ons, reschedule.
+# earlier ones), each in its own psql session. t* = guest booking, u* =
+# services, add-ons, reschedule (both still hold after the multiservice
+# migration: old calls keep working), v* = multi-service booking.
 while IFS= read -r f; do run_test "$f"; done < <(ls tests/*.sql tests/*.sh | sort)
 
 echo

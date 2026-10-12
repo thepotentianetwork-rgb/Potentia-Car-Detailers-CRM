@@ -24,7 +24,7 @@ const longDate = (dateKey) =>
 export function buildBookingAlert({
   businessName, guest, customerName, phone, email, zip, vehicle, vehicleColor,
   service, price, type, mobileAddress, dateKey, time, notes, ownerLink, bookingId,
-  addons, totalPrice, totalDuration,
+  services, totalPrice, totalDuration,
 }) {
   const payload = {
     _subject: `New booking request - ${businessName}`,
@@ -43,10 +43,10 @@ export function buildBookingAlert({
     date: longDate(dateKey),
     start_time: time,
   };
-  // Add-ons: one line each with price and extra time, plus the job's totals.
-  if (addons?.length) {
-    payload.add_ons = addons
-      .map((a) => `${a.name} +$${(a.price_cents / 100).toFixed(0)}${a.extra_duration_min ? ` (+${a.extra_duration_min} min)` : ""}`)
+  // Several services: one entry each with its price and time, plus the totals.
+  if (services?.length > 1) {
+    payload.services = services
+      .map((s) => `${s.name} $${(s.price_cents / 100).toFixed(0)} (${s.duration_min} min)`)
       .join("; ");
   }
   if (totalPrice) payload.total_price = totalPrice;

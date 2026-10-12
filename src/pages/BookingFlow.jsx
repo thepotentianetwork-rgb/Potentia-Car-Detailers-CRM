@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
-import { fetchServices, fetchAddons } from "../api/services.js";
+import { fetchServices } from "../api/services.js";
 import { fetchAvailability, requestBooking } from "../api/bookings.js";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { useBranding, priceLabel } from "../tenants/branding.js";
 import { buildBookingAlert, sendBookingAlert } from "../lib/bookingAlert.js";
-import { addonLabel, addonTotals, minutesText } from "../lib/addons.js";
+import { minutesText } from "../lib/addons.js";
+import { serviceTotals } from "../lib/bookingServices.js";
+import { ServicePicker } from "../components/ServicePicker.jsx";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
@@ -30,10 +32,8 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
     [config.timezone, closedWeekdays]
   );
   const [services, setServices] = useState(null);
-  const [serviceId, setServiceId] = useState(null);
-  // Add-ons apply to every service; any number can be picked.
-  const [addons, setAddons] = useState([]);
-  const [addonIds, setAddonIds] = useState([]);
+  // Any number of services in one booking; the first is preselected.
+  const [serviceIds, setServiceIds] = useState([]);
   const [type, setType] = useState("dropoff");
   const [vehicle, setVehicle] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
@@ -53,24 +53,22 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
 
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
-  const service = services?.find((s) => s.id === serviceId);
-  // Price and length of the WHOLE job (service + add-ons). Open slots are
+  // Price and length of the WHOLE job (every chosen service). Open slots are
   // computed with the total so the booking fits; the server re-checks it.
-  const totals = addonTotals(service, addons, addonIds);
-  const toggleAddon = (id) => setAddonIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const totals = serviceTotals(services, serviceIds);
+  const picked = totals.selected.length > 0;
+  const serviceNames = totals.selected.map((s) => s.name).join(" + ");
+  // "From $X" pricing (tenant file) carries over when any chosen service has it.
+  const totalLabel = (cents) =>
+    totals.selected.some((s) => priceLabel(s, branding).startsWith("From")) ? `From $${(cents / 100).toFixed(0)}` : `$${(cents / 100).toFixed(0)}`;
   // Today, hide start times that already passed (plus the lead time) in the
   // business's timezone; the server enforces the same rule.
   const minStart = earliestStartFor(dateKey, new Date(), config.timezone);
 
   useEffect(() => {
     fetchServices(tenant.id)
-      .then((s) => { setServices(s); setServiceId(s[0]?.id); })
+      .then((s) => { setServices(s); setServiceIds(s[0] ? [s[0].id] : []); })
       .catch((e) => setError(e.message));
-    // Optional: a business with no add-ons (or before they exist) books as before.
-    Promise.resolve()
-      .then(() => fetchAddons(tenant.id))
-      .then((a) => setAddons(a || []))
-      .catch(() => setAddons([]));
   }, [tenant.id]);
 
   useEffect(() => {
@@ -82,11 +80,12 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   }, [dateKey, tenant.id, slotsVersion]);
 
   const availableStarts = useMemo(() => {
-    if (!service) return [];
+    if (!picked) return [];
     return getAvailableStarts(dayBookings, totals.durationMin, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
-  }, [dayBookings, service, totals.durationMin, type, config, minStart]);
+  }, [dayBookings, picked, totals.durationMin, type, config, minStart]);
 
   const validate = () => {
+    if (!picked) return "Pick at least one service.";
     if (guest) {
       if (guestName.trim().length < 2) return "Enter your name.";
       if (!normalizePhone(guestPhone)) return "Enter a 10-digit mobile phone number.";
@@ -105,8 +104,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
     const confirmation = {
       dateLabel: dayLabel(selectedDay),
       time: minutesToDisplay(startMinutes),
-      service: service.name,
-      ...(totals.selected.length > 0 && { addons: totals.selected.map((a) => a.name) }),
+      service: serviceNames,
       type,
       guest,
       name: guest ? guestName.trim() : undefined,
@@ -119,14 +117,13 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
     try {
       const created = await requestBooking({
         tenantSlug: tenant.slug,
-        serviceId: service.id,
+        serviceIds: totals.selected.map((s) => s.id),
         bookingDate: dateKey,
         startTime: minutesToPgTime(startMinutes),
         type,
         vehicleLabel: vehicle.trim(),
         vehicleColor: vehicleColor.trim(),
         mobileAddress: mobileAddress.trim(),
-        ...(totals.selected.length > 0 && { addonIds: totals.selected.map((a) => a.id) }),
         ...(guest && {
           guestName: guestName.trim(),
           guestPhone: normalizePhone(guestPhone),
@@ -160,13 +157,13 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         zip: guest ? guestZip.trim() : undefined,
         vehicle: vehicle.trim(),
         vehicleColor: vehicleColor.trim(),
-        service: service.name,
-        price: priceLabel(service, branding),
-        ...(totals.selected.length > 0 && {
-          addons: totals.selected,
-          totalPrice: priceLabel({ ...service, price_cents: totals.priceCents }, branding),
-          totalDuration: minutesText(totals.durationMin),
+        service: serviceNames,
+        price: totalLabel(totals.priceCents),
+        ...(totals.selected.length > 1 && {
+          services: totals.selected,
+          totalPrice: totalLabel(totals.priceCents),
         }),
+        totalDuration: minutesText(totals.durationMin),
         type,
         mobileAddress: mobileAddress.trim(),
         dateKey,
@@ -232,30 +229,11 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         </div>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Service</label>
-      <select value={serviceId || ""} onChange={(e) => setServiceId(e.target.value)}
-        className="w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
-        {services.map((s) => <option key={s.id} value={s.id}>{s.name} — {priceLabel(s, branding)}</option>)}
-      </select>
-
-      {addons.length > 0 && (
-        <fieldset className="mb-5 -mt-2">
-          <legend className={labelCls}>Add-ons (optional)</legend>
-          <div className="space-y-1.5">
-            {addons.map((a) => (
-              <label key={a.id} className="flex items-center gap-2.5 text-sm bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg px-3 py-2 cursor-pointer">
-                <input type="checkbox" checked={addonIds.includes(a.id)} onChange={() => toggleAddon(a.id)} />
-                <span>{addonLabel(a)}</span>
-              </label>
-            ))}
-          </div>
-          {service && (
-            <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mt-2">
-              Total: {priceLabel({ ...service, price_cents: totals.priceCents }, branding)} · {minutesText(totals.durationMin)}
-            </p>
-          )}
-        </fieldset>
-      )}
+      <ServicePicker services={services} selectedIds={serviceIds} onChange={setServiceIds}
+        priceText={(s) => priceLabel(s, branding)} className="mb-2" />
+      <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mb-5">
+        {picked ? `Total: ${totalLabel(totals.priceCents)} · ${minutesText(totals.durationMin)}` : "Pick at least one service."}
+      </p>
 
       <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Drop-off or Mobile</label>
       <div className="flex gap-2.5 mb-2">
@@ -287,8 +265,10 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       {loadingSlots ? (
         <LoadingBox />
       ) : availableStarts.length === 0 ? (
-        <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">{totals.selected.length > 0
-            ? `No open time on this day fits ${service?.name} plus your add-ons (${minutesText(totals.durationMin)}). Try another day or fewer add-ons.`
+        <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">{!picked
+            ? "Pick at least one service to see open times."
+            : totals.selected.length > 1
+            ? `No open time on this day fits ${serviceNames} (${minutesText(totals.durationMin)}). Try another day or fewer services.`
             : "No slots long enough for this service on this day."}</div>
       ) : (
         <div className="grid grid-cols-3 gap-2.5 mb-2">

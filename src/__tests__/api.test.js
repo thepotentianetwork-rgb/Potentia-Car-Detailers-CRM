@@ -37,7 +37,7 @@ beforeEach(() => {
 
 describe("requestBooking()", () => {
   const base = {
-    tenantSlug: "shine", serviceId: "svc-1", bookingDate: "2026-10-08", startTime: "14:00:00",
+    tenantSlug: "shine", serviceIds: ["svc-1"], bookingDate: "2026-10-08", startTime: "14:00:00",
     type: "dropoff", vehicleLabel: "2020 Honda Civic", vehicleColor: "Blue", mobileAddress: "should be dropped",
   };
 
@@ -45,7 +45,7 @@ describe("requestBooking()", () => {
     calls.result = { data: [{ booking_id: "b-1", status: "pending" }], error: null };
     const row = await requestBooking({ ...base, guestName: "Gina Guest", guestPhone: "5552010001", guestEmail: "gina@example.com", guestZip: "80202" });
     expect(call("rpc").args).toEqual(["request_booking", {
-      p_tenant_slug: "shine", p_service_id: "svc-1", p_booking_date: "2026-10-08", p_start_time: "14:00:00",
+      p_tenant_slug: "shine", p_service_id: "svc-1", p_service_ids: ["svc-1"], p_booking_date: "2026-10-08", p_start_time: "14:00:00",
       p_type: "dropoff", p_vehicle_label: "2020 Honda Civic", p_vehicle_color: "Blue", p_mobile_address: null,
       p_guest_name: "Gina Guest", p_guest_phone: "5552010001", p_guest_email: "gina@example.com", p_guest_zip: "80202",
     }]);
@@ -134,29 +134,32 @@ describe("owner dashboard reads are scoped to one business", () => {
   });
 });
 
-describe("add-on / reschedule API calls", () => {
-  it("request_booking gets p_addon_ids (deduped) only when add-ons are chosen", async () => {
+describe("multi-service / reschedule API calls", () => {
+  it("request_booking gets every chosen service (deduped, in order) and the first as p_service_id; never add-ons", async () => {
     const { requestBooking } = await import("../api/bookings.js");
-    const base = { tenantSlug: "s", serviceId: "svc", bookingDate: "2026-10-09", startTime: "09:00:00", type: "dropoff", vehicleLabel: "Car" };
-    await requestBooking(base);
-    expect(calls.list.find((c) => c.m === "rpc").args[1]).not.toHaveProperty("p_addon_ids");
-    calls.list = [];
-    await requestBooking({ ...base, addonIds: ["a", "b", "a"] });
-    expect(calls.list.find((c) => c.m === "rpc").args[1].p_addon_ids).toEqual(["a", "b"]);
+    const base = { tenantSlug: "s", bookingDate: "2026-10-09", startTime: "09:00:00", type: "dropoff", vehicleLabel: "Car" };
+    await requestBooking({ ...base, serviceIds: ["b", "a", "b", null] });
+    const args = calls.list.find((c) => c.m === "rpc").args[1];
+    expect(args.p_service_ids).toEqual(["b", "a"]);
+    expect(args.p_service_id).toBe("b");
+    expect(args).not.toHaveProperty("p_addon_ids");
   });
   it("reschedule, edit and manual booking go through the staff database functions", async () => {
     const api = await import("../api/bookings.js");
     await api.rescheduleBooking("b1", { bookingDate: "2026-10-09", startTime: "15:00:00" });
-    await api.setBookingServiceAddons("b1", { serviceId: "svc", addonIds: ["x", "x"] });
-    await api.createManualBooking({ tenantId: "t-1", serviceId: "svc", bookingDate: "d", startTime: "t", type: "dropoff", vehicleLabel: "Car", newName: "N", addonIds: ["x"] });
+    await api.setBookingServices("b1", { serviceIds: ["x", "y", "x"] });
+    await api.createManualBooking({ tenantId: "t-1", serviceIds: ["y", "x"], bookingDate: "d", startTime: "t", type: "dropoff", vehicleLabel: "Car", newName: "N" });
     const rpcs = calls.list.filter((c) => c.m === "rpc").map((c) => c.args);
     expect(rpcs[0]).toEqual(["reschedule_booking", { p_booking_id: "b1", p_new_date: "2026-10-09", p_new_start_time: "15:00:00" }]);
-    expect(rpcs[1]).toEqual(["set_booking_service_addons", { p_booking_id: "b1", p_service_id: "svc", p_addon_ids: ["x"] }]);
+    expect(rpcs[1]).toEqual(["set_booking_services", { p_booking_id: "b1", p_service_ids: ["x", "y"] }]);
     expect(rpcs[2][0]).toBe("create_manual_booking");
-    expect(rpcs[2][1]).toMatchObject({ p_tenant_id: "t-1", p_new_name: "N", p_profile_id: null, p_addon_ids: ["x"] });
+    expect(rpcs[2][1]).toMatchObject({ p_tenant_id: "t-1", p_new_name: "N", p_profile_id: null, p_service_id: "y", p_service_ids: ["y", "x"] });
+    expect(rpcs[2][1]).not.toHaveProperty("p_addon_ids");
   });
-  it("owner bookings load add-on snapshots", async () => {
+  it("owner bookings load service snapshots and (for older bookings) add-on snapshots", async () => {
     await fetchTenantBookings("t-1");
-    expect(calls.list.find((c) => c.m === "select").args[0]).toMatch(/booking_addons\(/);
+    const cols = calls.list.find((c) => c.m === "select").args[0];
+    expect(cols).toMatch(/booking_services\(id,service_id,name,price_cents,duration_min,position\)/);
+    expect(cols).toMatch(/booking_addons\(/);
   });
 });
