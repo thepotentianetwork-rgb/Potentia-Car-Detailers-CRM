@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({ fetchTenantVehicles: vi.fn(), updateVehicleNotes: vi.fn() }));
+// RequestsTab now pulls in the reschedule API; keep Supabase out of the test.
+vi.mock("../lib/supabaseClient.js", () => ({ supabase: {} }));
 vi.mock("../api/vehicles.js", () => ({ fetchTenantVehicles: mocks.fetchTenantVehicles, updateVehicleNotes: mocks.updateVehicleNotes }));
 
 import { RequestsTab } from "../pages/admin/RequestsTab.jsx";

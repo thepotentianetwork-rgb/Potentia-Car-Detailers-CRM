@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Wrench, Phone, Mail, MapPin, CalendarDays, Wallet } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
+import { serviceIncludes } from "../lib/addons.js";
 import { useBranding, headingStyle, priceLabel, durationLabel } from "../tenants/branding.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
@@ -71,7 +72,8 @@ export function Homepage({ onBook }) {
         {!services && !error && <LoadingBox />}
         <div className="space-y-2.5">
           {services?.map((s) => {
-            const includes = branding.serviceDetails[s.name]?.includes;
+            // Owner-edited description first; tenant file copy if it's blank.
+            const includes = serviceIncludes(s, branding);
             return (
               <div key={s.id} className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg p-3.5">
                 <div className="flex items-center justify-between gap-3">

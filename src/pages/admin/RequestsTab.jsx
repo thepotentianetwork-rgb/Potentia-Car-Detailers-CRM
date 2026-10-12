@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Check, Home, Building2, Phone, Mail, Car, MapPin, Copy } from "lucide-react";
+import { Check, Home, Building2, Phone, Mail, Car, MapPin, Copy, CalendarClock, Plus } from "lucide-react";
 import { dayLabel, minutesToDisplay, pgTimeToMinutes } from "../../lib/time.js";
 import { formatPhone } from "../../lib/contact.js";
+import { bookingAddons, dollars, minutesText } from "../../lib/addons.js";
+import { RescheduleForm } from "./RescheduleForm.jsx";
 
 // The shop calls and texts from Google Voice, so phone numbers are shown with
 // a Copy button. Never render tel: or sms: links here: they open the phone's
@@ -52,7 +54,10 @@ function PhoneWithCopy({ phone }) {
   );
 }
 
-export function RequestsTab({ pending, busyId, onAct }) {
+// allBookings (every booking for the business) is needed to offer open
+// reschedule slots; onRefresh reloads after a move.
+export function RequestsTab({ pending, busyId, onAct, allBookings = pending, onRefresh = () => {} }) {
+  const [reschedulingId, setReschedulingId] = useState(null);
   return (
     <div className="space-y-2.5">
       {pending.length === 0 && <div className="text-center py-10 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg">No pending requests.</div>}
@@ -71,12 +76,19 @@ export function RequestsTab({ pending, busyId, onAct }) {
                   )}
                 </div>
                 <div className="text-[12px] text-[#C9CDD3] mt-0.5">{req.services?.name}</div>
+                {bookingAddons(req).length > 0 && (
+                  <ul className="text-[11px] text-[#8B8F96] mt-0.5" aria-label="Add-ons">
+                    {bookingAddons(req).map((a) => (
+                      <li key={a.id || a.name} className="flex items-center gap-1"><Plus size={9} /> {a.name} {dollars(a.price_cents)}{a.extra_duration_min ? ` (+${a.extra_duration_min} min)` : ""}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <span style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[9px] font-bold uppercase tracking-wide bg-[#3D3315] text-[#D4AF37] px-2 py-1 rounded">Pending</span>
             </div>
             <div className="text-[12px] text-[#8B8F96] flex items-center gap-1.5 mb-2">
               {req.type === "mobile" ? <Home size={11} /> : <Building2 size={11} />}
-              {dayLabel(new Date(req.booking_date + "T00:00:00"))} · {minutesToDisplay(pgTimeToMinutes(req.start_time))} · {req.duration_min} min
+              {dayLabel(new Date(req.booking_date + "T00:00:00"))} · {minutesToDisplay(pgTimeToMinutes(req.start_time))} · {minutesText(req.duration_min)} · {dollars(req.price_cents)} total
             </div>
             <div className="text-[12px] text-[#8B8F96] space-y-1 mb-3">
               {p.phone && <PhoneWithCopy phone={p.phone} />}
@@ -93,7 +105,19 @@ export function RequestsTab({ pending, busyId, onAct }) {
                 <div className="flex items-center gap-1.5"><MapPin size={11} className="shrink-0" /> ZIP {p.zip}</div>
               )}
             </div>
+            {reschedulingId === req.id && (
+              <div className="mb-2">
+                <RescheduleForm
+                  booking={req}
+                  allBookings={allBookings}
+                  onCancel={() => setReschedulingId(null)}
+                  onSaved={() => { setReschedulingId(null); onRefresh(); }}
+                />
+              </div>
+            )}
             <div className="flex gap-2">
+              <button disabled={busyId === req.id} onClick={() => setReschedulingId(reschedulingId === req.id ? null : req.id)} aria-label="Reschedule"
+                className="flex items-center justify-center gap-1 text-[12px] font-medium text-[#C9CDD3] border border-[#232529] hover:border-[#4A4D53] px-2.5 py-2 rounded-md disabled:opacity-50"><CalendarClock size={12} /> Reschedule</button>
               <button disabled={busyId === req.id} onClick={() => onAct(req.id, "approved")} className="flex-1 flex items-center justify-center gap-1.5 bg-[#E4E7EB] hover:bg-white text-[#0A0A0B] text-[12px] font-semibold py-2 rounded-md disabled:opacity-50"><Check size={12} /> Approve</button>
               <button disabled={busyId === req.id} onClick={() => onAct(req.id, "declined")} className="flex-1 text-[12px] font-medium text-[#8B8F96] hover:text-[#E08A8A] border border-[#232529] py-2 rounded-md disabled:opacity-50">Decline</button>
             </div>

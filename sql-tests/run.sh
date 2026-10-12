@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# SQL tests for guest-booking-migration.sql, run against a THROWAWAY local
+# SQL tests for the booking migrations, run against a THROWAWAY local
 # Postgres (never the live Supabase database). See README.md.
 #
-#   ./run.sh                  mock live schema -> apply migration -> run tests
-#   ./run.sh --no-migration   same, without the migration (shows the tests failing)
+#   ./run.sh                  live-state mock -> apply services-addons migration -> run tests
+#   ./run.sh --no-migration   same, without services-addons-migration.sql (shows its tests failing)
 #
 # Env: SQLTEST_PSQL  psql command   (default: "sudo -u postgres psql")
 #      SQLTEST_DB    database name  (default: crm_guest_test; dropped and recreated)
 set -uo pipefail
 cd "$(dirname "$0")"
 
-MIGRATION=../guest-booking-migration.sql
+GUEST=../guest-booking-migration.sql
+MIGRATION=../services-addons-migration.sql
 export DB=${SQLTEST_DB:-crm_guest_test}
 export PSQL=${SQLTEST_PSQL:-"sudo -u postgres psql"}
 
@@ -32,11 +33,18 @@ psql_q -d postgres -c "drop database if exists $DB" -c "create database $DB" >/d
 cat setup/00_mock_live_schema.sql setup/01_seed.sql setup/02_helpers.sql | psql_q -d "$DB" >/dev/null 2>&1 \
   || { echo "setup failed" >&2; exit 2; }
 
+# Live state (2026-10-12): guest-booking PARTS 0-4 plus PART 5 (its two
+# commented-out drop policy lines) are applied in production.
+psql_q -d "$DB" -f "$GUEST" >/dev/null 2>&1 || { echo "guest-booking migration failed to apply" >&2; exit 2; }
+part5=$(sed -n '/^-- PART 5\./,$p' "$GUEST" | sed -n 's/^-- \(drop policy .*\)$/\1/p')
+echo "$part5" | psql_q -d "$DB" >/dev/null 2>&1 || { echo "guest-booking PART 5 failed" >&2; exit 2; }
+echo "Mock = live state: $GUEST PARTS 0-5"
+
 if [ $with_migration = 1 ]; then
   psql_q -d "$DB" -f "$MIGRATION" >/dev/null 2>&1 || { echo "migration failed to apply:" >&2; psql_q -d "$DB" -f "$MIGRATION" 2>&1 | grep -i error >&2; exit 2; }
-  echo "Applied $MIGRATION (PARTS 0-4)"
+  echo "Applied $MIGRATION (sections 1-6)"
 else
-  echo "NOT applying the migration (--no-migration)"
+  echo "NOT applying $MIGRATION (--no-migration)"
 fi
 
 pass=0; fail=0
@@ -54,23 +62,9 @@ run_test() {
 }
 
 # Tests run in file-name order and share one database (later tests build on
-# earlier ones), each in its own psql session.
+# earlier ones), each in its own psql session. t* = guest booking (still
+# hold after the add-ons migration), u* = services, add-ons, reschedule.
 while IFS= read -r f; do run_test "$f"; done < <(ls tests/*.sql tests/*.sh | sort)
-
-# PART 5 is commented out in the migration (it runs only after the new
-# frontend is live). Apply those lines here to prove booking still works without
-# the direct-insert policies.
-part5=$(sed -n '/^-- PART 5\./,$p' "$MIGRATION" | sed -n 's/^-- \(drop policy .*\)$/\1/p')
-echo "$part5" | psql_q -d "$DB" >/dev/null 2>&1 && echo "Applied PART 5 ($(echo "$part5" | grep -c 'drop policy') statements) to the local mock"
-for f in tests/after-part5/*.sql; do
-  name=$(grep -m1 '^-- TEST:' "$f" | sed 's/^-- TEST: //')
-  if out=$(psql_q -d "$DB" -f "$f" 2>&1); then
-    pass=$((pass + 1)); echo "PASS after-part5/$(basename "$f"): $name"
-  else
-    fail=$((fail + 1)); echo "FAIL after-part5/$(basename "$f"): $name"
-    echo "$out" | grep -E "ERROR:|FATAL:" | head -3 | sed 's/^/       /'
-  fi
-done
 
 echo
 echo "SQL tests: $pass passed, $fail failed"

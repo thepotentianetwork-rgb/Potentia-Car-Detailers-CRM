@@ -54,7 +54,10 @@ export default {
   bookingAlertFormspreeUrl: "https://formspree.io/f/mykaqben",
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",
   // Keyed by services.name in the seed file. Copy, "from" prices and duration
-  // labels are from services.html.
+  // labels are from services.html. `includes` is now only a FALLBACK: the
+  // homepage shows services.description (editable in the owner's Services
+  // tab) when it is filled in, so renaming a service there no longer loses
+  // its copy. `from` and `durationLabel` are still matched by exact name.
   serviceDetails: {
     "Regular — Interior & Exterior": {
       durationLabel: "4 – 5 hrs",
