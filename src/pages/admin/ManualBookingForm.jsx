@@ -2,10 +2,11 @@ import { useState, useEffect, useMemo } from "react";
 import { X, Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { fetchServices } from "../../api/services.js";
-import { fetchAvailability, createBooking } from "../../api/bookings.js";
-import { createVehicle } from "../../api/vehicles.js";
-import { fetchTenantCustomers, fetchTenantStaff, createGuestCustomer } from "../../api/profiles.js";
+import { fetchServices, fetchAddons } from "../../api/services.js";
+import { fetchAvailability, createManualBooking } from "../../api/bookings.js";
+import { fetchTenantCustomers, fetchTenantStaff } from "../../api/profiles.js";
+import { addonTotals, dollars, minutesText } from "../../lib/addons.js";
+import { AddonChecklist } from "../../components/AddonChecklist.jsx";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
@@ -26,6 +27,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
 
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
+  const [addons, setAddons] = useState([]);
+  const [addonIds, setAddonIds] = useState([]);
   const [vehicle, setVehicle] = useState("");
   const [type, setType] = useState("dropoff");
   const [mobileAddress, setMobileAddress] = useState("");
@@ -39,6 +42,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
   const service = services?.find((s) => s.id === serviceId);
+  // Slots must fit the whole job: service + every checked add-on.
+  const totals = addonTotals(service, addons, addonIds);
   // Today, hide slots that already started (business timezone). No lead time
   // for staff, so a walk-in can still be put in the next open slot.
   const minStart = earliestStartFor(dateKey, new Date(), config.timezone, 0);
@@ -48,6 +53,10 @@ export function ManualBookingForm({ onClose, onCreated }) {
     fetchServices(tenant.id)
       .then((s) => { setServices(s); setServiceId(s[0]?.id); })
       .catch((e) => setError(e.message));
+    Promise.resolve()
+      .then(() => fetchAddons(tenant.id))
+      .then((a) => setAddons(a || []))
+      .catch(() => setAddons([]));
     fetchTenantStaff(tenant.id)
       .then((s) => { setStaffList(s); if (profile && s.some((p) => p.id === profile.id)) setStaffId(profile.id); })
       .catch((e) => setError(e.message));
@@ -63,8 +72,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
 
   const availableStarts = useMemo(() => {
     if (!service) return [];
-    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
-  }, [dayBookings, service, type, config, minStart]);
+    return getAvailableStarts(dayBookings, totals.durationMin, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
+  }, [dayBookings, service, totals.durationMin, type, config, minStart]);
 
   const submitBooking = async (startMinutes) => {
     if (customerMode === "new" && !newName.trim()) { setError("Enter the customer's name."); return; }
@@ -75,25 +84,21 @@ export function ManualBookingForm({ onClose, onCreated }) {
     setSubmitting(true);
     setError("");
     try {
-      const profileId =
-        customerMode === "new"
-          ? (await createGuestCustomer(tenant.id, newName.trim(), newPhone.trim())).id
-          : existingCustomerId;
-
-      const v = await createVehicle(profileId, vehicle.trim(), tenant.id);
-      await createBooking({
-        profile_id: profileId,
-        service_id: service.id,
-        vehicle_id: v.id,
-        staff_id: staffId || null,
-        tenant_id: tenant.id,
-        booking_date: dateKey,
-        start_time: minutesToPgTime(startMinutes),
-        duration_min: service.duration_min,
+      // One server call: customer, vehicle, approved booking and add-ons are
+      // saved together (or not at all), and the slot is re-checked.
+      await createManualBooking({
+        tenantId: tenant.id,
+        serviceId: service.id,
+        bookingDate: dateKey,
+        startTime: minutesToPgTime(startMinutes),
         type,
-        mobile_address: type === "mobile" ? mobileAddress.trim() : null,
-        status: "approved",
-        price_cents: service.price_cents,
+        vehicleLabel: vehicle.trim(),
+        profileId: customerMode === "existing" ? existingCustomerId : null,
+        newName: customerMode === "new" ? newName.trim() : null,
+        newPhone: customerMode === "new" ? newPhone.trim() : null,
+        staffId: staffId || null,
+        mobileAddress: mobileAddress.trim(),
+        addonIds: totals.selected.map((a) => a.id),
       });
       onCreated();
     } catch (e) {
@@ -162,6 +167,12 @@ export function ManualBookingForm({ onClose, onCreated }) {
               className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5">
               {services.map((s) => <option key={s.id} value={s.id}>{s.name} — ${(s.price_cents / 100).toFixed(0)}</option>)}
             </select>
+            <AddonChecklist addons={addons} selectedIds={addonIds} onChange={setAddonIds} className="-mt-3 mb-3" />
+            {service && (
+              <div data-testid="manual-total" className="text-[12px] text-[#8B8F96] mb-5">
+                Total: {dollars(totals.priceCents)} · {minutesText(totals.durationMin)}
+              </div>
+            )}
 
             <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Detailer</label>
             {staffList.length === 0 ? (
@@ -203,7 +214,9 @@ export function ManualBookingForm({ onClose, onCreated }) {
             {loadingSlots ? (
               <LoadingBox />
             ) : availableStarts.length === 0 ? (
-              <div className="text-center py-8 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg mb-2">No slots long enough for this service on this day.</div>
+              <div className="text-center py-8 text-[13px] text-[#5C5F66] border border-dashed border-[#232529] rounded-lg mb-2">{totals.selected.length > 0
+                  ? `No open time on this day fits this service plus add-ons (${minutesText(totals.durationMin)}).`
+                  : "No slots long enough for this service on this day."}</div>
             ) : (
               <div className="grid grid-cols-3 gap-2.5 mb-2">
                 {availableStarts.map((mins) => (

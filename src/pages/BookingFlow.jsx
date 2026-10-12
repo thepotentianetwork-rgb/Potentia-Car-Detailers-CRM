@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
-import { fetchServices } from "../api/services.js";
+import { fetchServices, fetchAddons } from "../api/services.js";
 import { fetchAvailability, requestBooking } from "../api/bookings.js";
 import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { useBranding, priceLabel } from "../tenants/branding.js";
 import { buildBookingAlert, sendBookingAlert } from "../lib/bookingAlert.js";
+import { addonLabel, addonTotals, minutesText } from "../lib/addons.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
@@ -30,6 +31,9 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   );
   const [services, setServices] = useState(null);
   const [serviceId, setServiceId] = useState(null);
+  // Add-ons apply to every service; any number can be picked.
+  const [addons, setAddons] = useState([]);
+  const [addonIds, setAddonIds] = useState([]);
   const [type, setType] = useState("dropoff");
   const [vehicle, setVehicle] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
@@ -50,6 +54,10 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const selectedDay = days[dayIndex];
   const dateKey = iso(selectedDay);
   const service = services?.find((s) => s.id === serviceId);
+  // Price and length of the WHOLE job (service + add-ons). Open slots are
+  // computed with the total so the booking fits; the server re-checks it.
+  const totals = addonTotals(service, addons, addonIds);
+  const toggleAddon = (id) => setAddonIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   // Today, hide start times that already passed (plus the lead time) in the
   // business's timezone; the server enforces the same rule.
   const minStart = earliestStartFor(dateKey, new Date(), config.timezone);
@@ -58,6 +66,11 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
     fetchServices(tenant.id)
       .then((s) => { setServices(s); setServiceId(s[0]?.id); })
       .catch((e) => setError(e.message));
+    // Optional: a business with no add-ons (or before they exist) books as before.
+    Promise.resolve()
+      .then(() => fetchAddons(tenant.id))
+      .then((a) => setAddons(a || []))
+      .catch(() => setAddons([]));
   }, [tenant.id]);
 
   useEffect(() => {
@@ -70,8 +83,8 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
 
   const availableStarts = useMemo(() => {
     if (!service) return [];
-    return getAvailableStarts(dayBookings, service.duration_min, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
-  }, [dayBookings, service, type, config, minStart]);
+    return getAvailableStarts(dayBookings, totals.durationMin, type, config.businessHours, config.bookingGranularityMin, config.mobileTravelBufferMin, minStart);
+  }, [dayBookings, service, totals.durationMin, type, config, minStart]);
 
   const validate = () => {
     if (guest) {
@@ -93,6 +106,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       dateLabel: dayLabel(selectedDay),
       time: minutesToDisplay(startMinutes),
       service: service.name,
+      ...(totals.selected.length > 0 && { addons: totals.selected.map((a) => a.name) }),
       type,
       guest,
       name: guest ? guestName.trim() : undefined,
@@ -112,6 +126,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         vehicleLabel: vehicle.trim(),
         vehicleColor: vehicleColor.trim(),
         mobileAddress: mobileAddress.trim(),
+        ...(totals.selected.length > 0 && { addonIds: totals.selected.map((a) => a.id) }),
         ...(guest && {
           guestName: guestName.trim(),
           guestPhone: normalizePhone(guestPhone),
@@ -147,6 +162,11 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         vehicleColor: vehicleColor.trim(),
         service: service.name,
         price: priceLabel(service, branding),
+        ...(totals.selected.length > 0 && {
+          addons: totals.selected,
+          totalPrice: priceLabel({ ...service, price_cents: totals.priceCents }, branding),
+          totalDuration: minutesText(totals.durationMin),
+        }),
         type,
         mobileAddress: mobileAddress.trim(),
         dateKey,
@@ -218,6 +238,25 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         {services.map((s) => <option key={s.id} value={s.id}>{s.name} — {priceLabel(s, branding)}</option>)}
       </select>
 
+      {addons.length > 0 && (
+        <fieldset className="mb-5 -mt-2">
+          <legend className={labelCls}>Add-ons (optional)</legend>
+          <div className="space-y-1.5">
+            {addons.map((a) => (
+              <label key={a.id} className="flex items-center gap-2.5 text-sm bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg px-3 py-2 cursor-pointer">
+                <input type="checkbox" checked={addonIds.includes(a.id)} onChange={() => toggleAddon(a.id)} />
+                <span>{addonLabel(a)}</span>
+              </label>
+            ))}
+          </div>
+          {service && (
+            <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mt-2">
+              Total: {priceLabel({ ...service, price_cents: totals.priceCents }, branding)} · {minutesText(totals.durationMin)}
+            </p>
+          )}
+        </fieldset>
+      )}
+
       <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Drop-off or Mobile</label>
       <div className="flex gap-2.5 mb-2">
         <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
@@ -248,7 +287,9 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       {loadingSlots ? (
         <LoadingBox />
       ) : availableStarts.length === 0 ? (
-        <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">No slots long enough for this service on this day.</div>
+        <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">{totals.selected.length > 0
+            ? `No open time on this day fits ${service?.name} plus your add-ons (${minutesText(totals.durationMin)}). Try another day or fewer add-ons.`
+            : "No slots long enough for this service on this day."}</div>
       ) : (
         <div className="grid grid-cols-3 gap-2.5 mb-2">
           {availableStarts.map((mins) => (

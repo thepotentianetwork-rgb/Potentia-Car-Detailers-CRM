@@ -1,4 +1,16 @@
-# SQL tests for `guest-booking-migration.sql`
+# SQL tests for the booking migrations
+
+Covers `guest-booking-migration.sql` (t* tests) and
+`services-addons-migration.sql` (u* tests: services manager, add-ons,
+staff reschedule/edit/manual booking, Juan's section 6 move).
+
+Since 2026-10-12 the live database has guest-booking PARTS 0-5, so `run.sh`
+builds that state first (mock + PARTS 0-5), then applies
+`services-addons-migration.sql` (sections 1-6). `./run.sh --no-migration`
+skips only the add-ons migration: the t* tests still pass and the u* tests
+fail. The rest of this file describes the original guest-booking harness.
+
+## Original notes (guest booking)
 
 These tests exercise the guest-booking migration (`request_booking()`, the
 signup trigger, new columns, PART 0's view lockdown and PART 5) in a

@@ -1,6 +1,11 @@
 -- LOCAL TEST HARNESS ONLY. Recreates the shape of the live Supabase schema
 -- (as read from the catalog on 2026-10-08) in a throwaway local Postgres 17,
 -- so the proposed migration can be exercised without touching production.
+-- This file is the state BEFORE guest-booking-migration.sql; run.sh then
+-- applies that migration's PARTS 0-5 to reach the live state. Re-checked
+-- against the live catalog (SELECT-only) on 2026-10-12: PART 5 is applied
+-- (no customer insert policies on bookings/vehicles), request_booking has the
+-- 12-arg signature, and the policies/trigger below marked 2026-10-12 exist.
 drop schema if exists public cascade; create schema public;
 drop schema if exists auth cascade; create schema auth;
 do $$ begin
@@ -90,6 +95,23 @@ create policy "customers see own vehicles" on public.vehicles for select using (
 create policy "customers create own vehicles" on public.vehicles for insert with check (profile_id = auth.uid() and tenant_id = current_tenant_id());
 create policy "staff see vehicles in their tenant" on public.vehicles for select using (is_tenant_staff() and tenant_id = current_tenant_id());
 create policy "staff create vehicles in their tenant" on public.vehicles for insert with check (is_tenant_staff() and tenant_id = current_tenant_id());
+-- Also live (catalog read 2026-10-12):
+create policy "staff manage vehicles in their tenant" on public.vehicles for update using (is_tenant_staff() and tenant_id = current_tenant_id()) with check (is_tenant_staff() and tenant_id = current_tenant_id());
+create policy "staff manage services in their tenant" on public.services for all using (is_tenant_staff() and tenant_id = current_tenant_id()) with check (is_tenant_staff() and tenant_id = current_tenant_id());
+create policy "potentia_admin manages all services" on public.services for all using (is_potentia_admin()) with check (is_potentia_admin());
+create policy "potentia_admin manages all bookings" on public.bookings for all using (is_potentia_admin()) with check (is_potentia_admin());
+create policy "potentia_admin manages all vehicles" on public.vehicles for all using (is_potentia_admin()) with check (is_potentia_admin());
+create policy "potentia_admin sees all profiles" on public.profiles for select using (is_potentia_admin());
+create policy "potentia_admin manages profiles" on public.profiles for update using (is_potentia_admin()) with check (is_potentia_admin());
+create policy "potentia_admin manages tenants" on public.tenants for all using (is_potentia_admin()) with check (is_potentia_admin());
+create function public.set_updated_at() returns trigger language plpgsql as $$ begin new.updated_at = now(); return new; end $$;
+create trigger bookings_updated_at before update on public.bookings for each row execute function public.set_updated_at();
 
 -- Supabase's default: anon/authenticated get full table privileges; RLS does the gating.
 grant all on all tables in schema public to anon, authenticated;
+-- Supabase's default privileges for objects created later (live pg_default_acl,
+-- read 2026-10-12): new tables get full privileges and new functions EXECUTE for
+-- anon/authenticated, so migrations must revoke what they don't want exposed.
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+alter default privileges in schema public grant execute on functions to anon, authenticated;

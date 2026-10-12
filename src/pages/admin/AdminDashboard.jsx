@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users, FileText } from "lucide-react";
+import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users, FileText, Wrench } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { fetchTenantBookings, updateBookingStatus } from "../../api/bookings.js";
 import { TabButton } from "../../components/TabButton.jsx";
@@ -11,6 +11,7 @@ import { StatsTab } from "./StatsTab.jsx";
 import { ExpensesTab } from "./ExpensesTab.jsx";
 import { CustomersTab } from "./CustomersTab.jsx";
 import { InvoicesTab } from "./InvoicesTab.jsx";
+import { ServicesTab } from "./ServicesTab.jsx";
 import { BookingLinkCard } from "../../components/BookingLinkCard.jsx";
 
 export function AdminDashboard({ session, onSignOut }) {
@@ -62,14 +63,16 @@ export function AdminDashboard({ session, onSignOut }) {
               <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users size={13} />} label="Customers" />
               <TabButton active={tab === "invoices"} onClick={() => setTab("invoices")} icon={<FileText size={13} />} label="Invoices" />
               <TabButton active={tab === "expenses"} onClick={() => setTab("expenses")} icon={<Receipt size={13} />} label="Expenses" />
+              <TabButton active={tab === "services"} onClick={() => setTab("services")} icon={<Wrench size={13} />} label="Services" />
             </div>
 
-            {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} />}
+            {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} allBookings={bookings} onRefresh={load} />}
             {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} onRefresh={load} />}
             {tab === "stats" && <StatsTab bookings={bookings} />}
             {tab === "customers" && <CustomersTab bookings={bookings} tenantId={tenant.id} />}
             {tab === "invoices" && <InvoicesTab bookings={bookings} onRefresh={load} />}
             {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
+            {tab === "services" && <ServicesTab />}
           </>
         )}
       </main>

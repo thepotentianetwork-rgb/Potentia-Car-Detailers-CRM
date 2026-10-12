@@ -1,10 +1,14 @@
 import { X, Printer } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { dayLabel, minutesToDisplay, pgTimeToMinutes } from "../lib/time.js";
+import { bookingAddons } from "../lib/addons.js";
 
 export function InvoiceModal({ booking, onClose }) {
   const { config } = useTenant();
   const amount = (booking.price_cents || 0) / 100;
+  // price_cents is the total; each add-on is its own line at its booked price.
+  const addons = bookingAddons(booking);
+  const serviceAmount = amount - addons.reduce((s, a) => s + a.price_cents, 0) / 100;
   const invoiceNumber = booking.id.slice(0, 8).toUpperCase();
   const serviceDate = dayLabel(new Date(booking.booking_date + "T00:00:00"));
 
@@ -70,8 +74,17 @@ export function InvoiceModal({ booking, onClose }) {
                   <div className="text-[11px] text-[#6B7280] mt-0.5">{booking.mobile_address}</div>
                 )}
               </td>
-              <td className="py-3 text-right text-sm font-medium">${amount.toFixed(2)}</td>
+              <td className="py-3 text-right text-sm font-medium">${serviceAmount.toFixed(2)}</td>
             </tr>
+            {addons.map((a) => (
+              <tr key={a.id || a.name} className="border-t border-[#E5E7EB]" data-testid="invoice-addon">
+                <td className="py-2">
+                  <div className="text-sm">+ {a.name}</div>
+                  {a.extra_duration_min > 0 && <div className="text-[11px] text-[#6B7280]">Add-on · {a.extra_duration_min} min</div>}
+                </td>
+                <td className="py-2 text-right text-sm">${(a.price_cents / 100).toFixed(2)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
 

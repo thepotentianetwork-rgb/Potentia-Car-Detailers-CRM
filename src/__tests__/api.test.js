@@ -133,3 +133,30 @@ describe("owner dashboard reads are scoped to one business", () => {
     expect(calls.list.some((c) => c.table === table && c.m === "select")).toBe(false);
   });
 });
+
+describe("add-on / reschedule API calls", () => {
+  it("request_booking gets p_addon_ids (deduped) only when add-ons are chosen", async () => {
+    const { requestBooking } = await import("../api/bookings.js");
+    const base = { tenantSlug: "s", serviceId: "svc", bookingDate: "2026-10-09", startTime: "09:00:00", type: "dropoff", vehicleLabel: "Car" };
+    await requestBooking(base);
+    expect(calls.list.find((c) => c.m === "rpc").args[1]).not.toHaveProperty("p_addon_ids");
+    calls.list = [];
+    await requestBooking({ ...base, addonIds: ["a", "b", "a"] });
+    expect(calls.list.find((c) => c.m === "rpc").args[1].p_addon_ids).toEqual(["a", "b"]);
+  });
+  it("reschedule, edit and manual booking go through the staff database functions", async () => {
+    const api = await import("../api/bookings.js");
+    await api.rescheduleBooking("b1", { bookingDate: "2026-10-09", startTime: "15:00:00" });
+    await api.setBookingServiceAddons("b1", { serviceId: "svc", addonIds: ["x", "x"] });
+    await api.createManualBooking({ tenantId: "t-1", serviceId: "svc", bookingDate: "d", startTime: "t", type: "dropoff", vehicleLabel: "Car", newName: "N", addonIds: ["x"] });
+    const rpcs = calls.list.filter((c) => c.m === "rpc").map((c) => c.args);
+    expect(rpcs[0]).toEqual(["reschedule_booking", { p_booking_id: "b1", p_new_date: "2026-10-09", p_new_start_time: "15:00:00" }]);
+    expect(rpcs[1]).toEqual(["set_booking_service_addons", { p_booking_id: "b1", p_service_id: "svc", p_addon_ids: ["x"] }]);
+    expect(rpcs[2][0]).toBe("create_manual_booking");
+    expect(rpcs[2][1]).toMatchObject({ p_tenant_id: "t-1", p_new_name: "N", p_profile_id: null, p_addon_ids: ["x"] });
+  });
+  it("owner bookings load add-on snapshots", async () => {
+    await fetchTenantBookings("t-1");
+    expect(calls.list.find((c) => c.m === "select").args[0]).toMatch(/booking_addons\(/);
+  });
+});
