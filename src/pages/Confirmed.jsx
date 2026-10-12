@@ -5,8 +5,7 @@ import { useBranding } from "../tenants/branding.js";
 export function Confirmed({ booking, onDone }) {
   const { config } = useTenant();
   const phone = useBranding().contact?.phone;
-  const withAddons = booking.addons?.length ? `${booking.service} + ${booking.addons.join(" + ")}` : booking.service;
-  const what = `${withAddons} (${booking.type === "mobile" ? "mobile" : "drop-off"}) on ${booking.dateLabel} at ${booking.time}.`;
+  const what = `${booking.service} (${booking.type === "mobile" ? "mobile" : "drop-off"}) on ${booking.dateLabel} at ${booking.time}.`;
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
       <div className="w-14 h-14 rounded-full bg-[#173D22] flex items-center justify-center mb-4"><Check size={22} className="text-[#5FCB7C]" /></div>

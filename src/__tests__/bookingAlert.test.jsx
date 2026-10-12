@@ -100,6 +100,7 @@ describe("owner alert after a guest booking request", () => {
       vehicle_color: "Black",
       service: "Exterior Only",
       price: "From $75",
+      total_duration: "1 hr 30 min",
       service_mode: "Mobile",
       address: "123 Main St, Tremonton",
       date: "Thursday, October 8, 2026",

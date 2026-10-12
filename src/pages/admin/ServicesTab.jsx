@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowUp, ArrowDown, Pencil, Plus } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import {
-  fetchAllServices, createService, updateService, fetchAddons, createAddon, updateAddon,
+  fetchAllServices, createService, updateService,
 } from "../../api/services.js";
 import { dollars, minutesText } from "../../lib/addons.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
@@ -10,7 +10,8 @@ import { ErrorBox } from "../../components/ErrorBox.jsx";
 
 const inputCls = "w-full bg-[#111214] border border-[#232529] rounded-md px-2.5 py-1.5 text-[12px] outline-none";
 
-// Services and add-ons share one editor; only the "minutes" field differs.
+// Service editor. (Add-ons were retired in favor of booking several
+// services at once; their old rows stay in the database for history.)
 const KINDS = {
   service: {
     title: "Services",
@@ -24,19 +25,6 @@ const KINDS = {
     create: createService,
     update: updateService,
     summary: (x) => `${dollars(x.price_cents)} · ${minutesText(x.duration_min)}`,
-  },
-  addon: {
-    title: "Add-ons",
-    minutesKey: "extra_duration_min",
-    minutesLabel: "Extra time (min)",
-    minMinutes: 0,
-    maxMinutes: 480,
-    maxDesc: 500,
-    descHint: "Optional. Add-ons can be added to any service.",
-    fetch: (tid) => fetchAddons(tid, { includeInactive: true }),
-    create: createAddon,
-    update: updateAddon,
-    summary: (x) => `+${dollars(x.price_cents)}${x.extra_duration_min ? ` · +${x.extra_duration_min} min` : ""}`,
   },
 };
 
@@ -194,7 +182,7 @@ function CatalogSection({ kind, tenantId }) {
 }
 
 // Owner dashboard: manage what customers can book. Nothing is deleted (past
-// bookings point at services and keep a snapshot of add-ons); turn off
+// bookings point at services and keep a snapshot of what was booked); turn off
 // "Active" to hide one from new bookings.
 export function ServicesTab() {
   const { tenant } = useTenant();
@@ -202,7 +190,6 @@ export function ServicesTab() {
     <div>
       <p className="text-[12px] text-[#8B8F96] mb-4">Changes apply to new bookings. Existing bookings keep the price and time they were booked with. Untick Active to stop offering something.</p>
       <CatalogSection kind="service" tenantId={tenant.id} />
-      <CatalogSection kind="addon" tenantId={tenant.id} />
     </div>
   );
 }

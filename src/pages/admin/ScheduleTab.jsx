@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Home, Building2, Pencil, Receipt, Plus, CalendarClock } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { getNextDays, iso, dayLabel, minutesToDisplay, pgTimeToMinutes, parse12h, bookingBusyInterval } from "../../lib/time.js";
-import { fetchAllServices, fetchAddons } from "../../api/services.js";
-import { setBookingServiceAddons } from "../../api/bookings.js";
-import { addonTotals, bookingAddons, dollars, minutesText } from "../../lib/addons.js";
-import { AddonChecklist } from "../../components/AddonChecklist.jsx";
+import { fetchAllServices } from "../../api/services.js";
+import { setBookingServices } from "../../api/bookings.js";
+import { bookingAddons, dollars, minutesText } from "../../lib/addons.js";
+import { serviceTotals, bookingTitle, bookingServiceIds } from "../../lib/bookingServices.js";
+import { ServicePicker } from "../../components/ServicePicker.jsx";
 import { RescheduleForm, isLive } from "./RescheduleForm.jsx";
 import { InvoiceModal } from "../../components/InvoiceModal.jsx";
 import { ManualBookingForm } from "./ManualBookingForm.jsx";
@@ -18,7 +19,6 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
   const totalMin = dayEnd - dayStart;
 
   const [services, setServices] = useState(null);
-  const [addons, setAddons] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [reschedulingId, setReschedulingId] = useState(null);
   const [invoiceBooking, setInvoiceBooking] = useState(null);
@@ -26,10 +26,6 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
 
   useEffect(() => {
     fetchAllServices(tenant.id).then(setServices).catch(() => {});
-    Promise.resolve()
-      .then(() => fetchAddons(tenant.id, { includeInactive: true }))
-      .then((a) => setAddons(a || []))
-      .catch(() => setAddons([]));
   }, [tenant.id]);
 
   return (
@@ -51,13 +47,13 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
               {dayBookings.map((b) => {
                 const start = pgTimeToMinutes(b.start_time);
                 const left = ((start - dayStart) / totalMin) * 100;
-                // duration_min is the FULL job (service + add-ons).
+                // duration_min is the FULL job (every service on it).
                 const width = (b.duration_min / totalMin) * 100;
                 return (
                   <div
                     key={b.id}
                     data-testid="timeline-bar"
-                    title={`${b.services?.name || "Booking"} · ${minutesText(b.duration_min)}`}
+                    title={`${bookingTitle(b) || "Booking"} · ${minutesText(b.duration_min)}`}
                     className={`absolute top-0 h-full bg-[#D4AF37]/80 ${b.status === "pending" ? "border border-dashed border-[#F5F5F6]" : ""}`}
                     style={{ left: `${left}%`, width: `${width}%` }}
                   />
@@ -74,7 +70,6 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
                       key={b.id}
                       booking={b}
                       services={services}
-                      addons={addons}
                       allBookings={bookings}
                       onCancel={() => setEditingId(null)}
                       onSaved={() => {
@@ -97,10 +92,7 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
                     <div key={b.id} className="text-[11px] text-[#8B8F96] flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 flex-1 min-w-0">
                         {b.type === "mobile" ? <Home size={10} /> : <Building2 size={10} />}
-                        <span className="truncate">
-                          {b.services?.name}
-                          {bookingAddons(b).length > 0 && ` + ${bookingAddons(b).map((a) => a.name).join(" + ")}`}
-                        </span>
+                        <span className="truncate">{bookingTitle(b)}</span>
                         {b.staff?.full_name && <span className="shrink-0"> · {b.staff.full_name}</span>}
                         {b.status === "pending" && <span className="text-[#D4AF37] shrink-0"> · pending</span>}
                         {b.status === "completed" && <span className="text-[#5FCB7C] shrink-0"> · done</span>}
@@ -109,8 +101,8 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
                       {(b.status === "pending" || b.status === "approved") && (
                         <button
                           onClick={() => setEditingId(b.id)}
-                          title="Change service / add-ons (upsell)"
-                          aria-label="Change service / add-ons"
+                          title="Change services (upsell)"
+                          aria-label="Change services"
                           className="shrink-0 text-[#5C5F66] hover:text-[#C9CDD3]"
                         >
                           <Pencil size={11} />
@@ -168,7 +160,7 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
 
 // Does a job of durationMin at the booking's current time run past closing
 // or into another live booking that day? Mirrors the server check so the
-// owner sees why before saving; set_booking_service_addons() enforces it.
+// owner sees why before saving; set_booking_services() enforces it.
 export function editConflict(booking, durationMin, allBookings, config) {
   const start = pgTimeToMinutes(booking.start_time);
   if (start + durationMin > parse12h(config.businessHours.end)) {
@@ -181,34 +173,41 @@ export function editConflict(booking, durationMin, allBookings, config) {
     return cs < oe && ce > os;
   })());
   if (hit) {
-    return `This ${minutesText(durationMin)} job would overlap ${hit.services?.name || "another booking"} at ${minutesToDisplay(pgTimeToMinutes(hit.start_time))}. Reschedule one of them first.`;
+    return `This ${minutesText(durationMin)} job would overlap ${bookingTitle(hit) || "another booking"} at ${minutesToDisplay(pgTimeToMinutes(hit.start_time))}. Reschedule one of them first.`;
   }
   return "";
 }
 
-function ServiceEditForm({ booking, services, addons, allBookings, onCancel, onSaved }) {
+function ServiceEditForm({ booking, services, allBookings, onCancel, onSaved }) {
   const { config } = useTenant();
-  const [serviceId, setServiceId] = useState(booking.service_id);
-  const current = bookingAddons(booking).map((a) => a.addon_id).filter(Boolean);
-  const [addonIds, setAddonIds] = useState(current);
+  const current = bookingServiceIds(booking);
+  const [serviceIds, setServiceIds] = useState(current);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Inactive services/add-ons are hidden unless already on this booking.
-  const serviceChoices = (services || []).filter((s) => s.active !== false || s.id === booking.service_id);
-  const addonChoices = (addons || []).filter((a) => a.active !== false || current.includes(a.id));
-  const service = serviceChoices.find((s) => s.id === serviceId);
-  const totals = addonTotals(service, addonChoices, addonIds);
-  const conflict = service && (booking.status === "pending" || booking.status === "approved")
-    ? editConflict(booking, totals.durationMin, allBookings, config)
+  // Inactive services are hidden unless already on this booking.
+  // Services already on it keep the price/minutes they were booked at (the
+  // server keeps that snapshot too).
+  const snapshot = new Map((booking.booking_services || []).map((r) => [r.service_id, r]));
+  const serviceChoices = (services || [])
+    .filter((s) => s.active !== false || current.includes(s.id))
+    .map((s) => (snapshot.has(s.id) ? { ...s, price_cents: snapshot.get(s.id).price_cents, duration_min: snapshot.get(s.id).duration_min } : s));
+  // Add-ons from the add-on era stay on the booking (and in its total).
+  const legacyAddons = bookingAddons(booking);
+  const totals = serviceTotals(serviceChoices, serviceIds);
+  const priceCents = totals.priceCents + legacyAddons.reduce((s, a) => s + (a.price_cents || 0), 0);
+  const durationMin = totals.durationMin + legacyAddons.reduce((s, a) => s + (a.extra_duration_min || 0), 0);
+  const picked = totals.selected.length > 0;
+  const conflict = picked && (booking.status === "pending" || booking.status === "approved")
+    ? editConflict(booking, durationMin, allBookings, config)
     : "";
 
   const save = async () => {
-    if (!service || conflict) return;
+    if (!picked || conflict) return;
     setSaving(true);
     setError("");
     try {
-      await setBookingServiceAddons(booking.id, { serviceId: service.id, addonIds: totals.selected.map((a) => a.id) });
+      await setBookingServices(booking.id, { serviceIds: totals.selected.map((s) => s.id) });
       onSaved();
     } catch (e) {
       setError(e.message);
@@ -222,30 +221,19 @@ function ServiceEditForm({ booking, services, addons, allBookings, onCancel, onS
         <div className="text-[11px] text-[#5C5F66]">Loading services…</div>
       ) : (
         <>
-          <select
-            aria-label="Service"
-            value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
-            className="w-full bg-[#111214] border border-[#232529] rounded-md px-2 py-1.5 text-[11px] outline-none"
-          >
-            {serviceChoices.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} — ${(s.price_cents / 100).toFixed(0)}
-              </option>
-            ))}
-          </select>
-          <AddonChecklist addons={addonChoices} selectedIds={addonIds} onChange={setAddonIds} />
-          {service && (
-            <div data-testid="edit-total" className="text-[11px] text-[#8B8F96]">
-              Total: {dollars(totals.priceCents)} · {minutesText(totals.durationMin)}
-            </div>
+          <ServicePicker services={serviceChoices} selectedIds={serviceIds} onChange={setServiceIds} variant="admin" />
+          {legacyAddons.length > 0 && (
+            <div className="text-[11px] text-[#8B8F96]">Kept from the original booking: {legacyAddons.map((a) => a.name).join(", ")}</div>
           )}
+          <div data-testid="edit-total" className="text-[11px] text-[#8B8F96]">
+            {picked ? `Total: ${dollars(priceCents)} · ${minutesText(durationMin)}` : "Pick at least one service."}
+          </div>
           {conflict && <div role="alert" className="text-[10px] text-[#E08A8A]">{conflict}</div>}
           {error && <div className="text-[10px] text-[#E08A8A]">{error}</div>}
           <div className="flex gap-1.5">
             <button
               onClick={save}
-              disabled={saving || !!conflict}
+              disabled={saving || !!conflict || !picked}
               className="flex-1 text-[10px] font-semibold text-[#0A0A0B] bg-[#E4E7EB] hover:bg-white py-1.5 rounded disabled:opacity-60"
             >
               {saving ? "Saving…" : "Save"}

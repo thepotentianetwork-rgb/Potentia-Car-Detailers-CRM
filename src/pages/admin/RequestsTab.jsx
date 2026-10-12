@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Check, Home, Building2, Phone, Mail, Car, MapPin, Copy, CalendarClock, Plus } from "lucide-react";
 import { dayLabel, minutesToDisplay, pgTimeToMinutes } from "../../lib/time.js";
 import { formatPhone } from "../../lib/contact.js";
-import { bookingAddons, dollars, minutesText } from "../../lib/addons.js";
+import { dollars, minutesText } from "../../lib/addons.js";
+import { bookingLineItems } from "../../lib/bookingServices.js";
 import { RescheduleForm } from "./RescheduleForm.jsx";
 
 // The shop calls and texts from Google Voice, so phone numbers are shown with
@@ -75,14 +76,20 @@ export function RequestsTab({ pending, busyId, onAct, allBookings = pending, onR
                     <span style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[9px] font-bold uppercase tracking-wide bg-[#1E2A3D] text-[#8FB3E8] px-1.5 py-0.5 rounded">Guest</span>
                   )}
                 </div>
-                <div className="text-[12px] text-[#C9CDD3] mt-0.5">{req.services?.name}</div>
-                {bookingAddons(req).length > 0 && (
-                  <ul className="text-[11px] text-[#8B8F96] mt-0.5" aria-label="Add-ons">
-                    {bookingAddons(req).map((a) => (
-                      <li key={a.id || a.name} className="flex items-center gap-1"><Plus size={9} /> {a.name} {dollars(a.price_cents)}{a.extra_duration_min ? ` (+${a.extra_duration_min} min)` : ""}</li>
-                    ))}
-                  </ul>
-                )}
+                {(() => {
+                  const items = bookingLineItems(req);
+                  if (items.length === 1) return <div className="text-[12px] text-[#C9CDD3] mt-0.5">{items[0].name}</div>;
+                  // several services (or a service + add-ons from the add-on era): one line each
+                  return (
+                    <ul className="text-[12px] text-[#C9CDD3] mt-0.5" aria-label="Services">
+                      {items.map((i, n) => (
+                        <li key={i.key} className="flex items-center gap-1">
+                          {n > 0 && <Plus size={9} />} {i.name} {dollars(i.price_cents)}{i.duration_min ? ` (${i.addon ? "+" : ""}${i.duration_min} min)` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
               </div>
               <span style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[9px] font-bold uppercase tracking-wide bg-[#3D3315] text-[#D4AF37] px-2 py-1 rounded">Pending</span>
             </div>

@@ -4,6 +4,7 @@ import { useTenant } from "../../context/TenantContext.jsx";
 import { dayLabel } from "../../lib/time.js";
 import { updateBookingPayment } from "../../api/bookings.js";
 import { InvoiceModal } from "../../components/InvoiceModal.jsx";
+import { bookingTitle } from "../../lib/bookingServices.js";
 
 export function InvoicesTab({ bookings, onRefresh }) {
   const [query, setQuery] = useState("");
@@ -15,7 +16,7 @@ export function InvoicesTab({ bookings, onRefresh }) {
       .filter((b) => {
         if (!query.trim()) return true;
         const name = (b.profiles?.full_name || "").toLowerCase();
-        const service = (b.services?.name || "").toLowerCase();
+        const service = bookingTitle(b).toLowerCase();
         return name.includes(query.toLowerCase()) || service.includes(query.toLowerCase());
       })
       .sort((a, b) => (b.booking_date + b.start_time).localeCompare(a.booking_date + a.start_time));
@@ -56,7 +57,7 @@ export function InvoicesTab({ bookings, onRefresh }) {
                   <div className="text-sm font-semibold truncate">{b.profiles?.full_name || "Customer"}</div>
                   <div className="text-[11px] text-[#8B8F96] flex items-center gap-1.5 mt-0.5">
                     {b.type === "mobile" ? <Home size={10} /> : <Building2 size={10} />}
-                    <span className="truncate">{b.services?.name}</span>
+                    <span className="truncate">{bookingTitle(b)}</span>
                     <span className="shrink-0">· {dayLabel(new Date(b.booking_date + "T00:00:00"))}</span>
                   </div>
                 </div>

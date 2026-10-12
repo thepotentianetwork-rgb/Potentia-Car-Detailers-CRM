@@ -95,7 +95,7 @@ describe("booking days", () => {
     expect(dateLabel().textContent).toBe("Sat, Oct 10");
     nextDay();
     expect(dateLabel().textContent).toBe("Mon, Oct 12");
-    expect(screen.getByRole("option", { name: "Paint Polish — From $400" })).toBeTruthy();
+    expect(screen.getByLabelText(/^Paint Polish · From \$400 · /)).toBeTruthy();
     expect(screen.getByText("Drop-off at 900 W Main St #20, Tremonton, UT 84337")).toBeTruthy();
   });
 

@@ -1,14 +1,17 @@
 # SQL tests for the booking migrations
 
-Covers `guest-booking-migration.sql` (t* tests) and
-`services-addons-migration.sql` (u* tests: services manager, add-ons,
-staff reschedule/edit/manual booking, Juan's section 6 move).
+Covers `guest-booking-migration.sql` (t* tests), `services-addons-migration.sql`
+(u* tests: services manager, add-ons, staff reschedule/edit/manual booking)
+and `multiservice-migration.sql` (v* tests: any number of services per
+booking, booking_services snapshots, Juan's services back from add-ons).
 
-Since 2026-10-12 the live database has guest-booking PARTS 0-5, so `run.sh`
-builds that state first (mock + PARTS 0-5), then applies
-`services-addons-migration.sql` (sections 1-6). `./run.sh --no-migration`
-skips only the add-ons migration: the t* tests still pass and the u* tests
-fail. The rest of this file describes the original guest-booking harness.
+Since 2026-10-12 the live database has guest-booking PARTS 0-5 and
+services-addons sections 1-6, so `run.sh` builds that state first (mock +
+both migrations + `setup/03_pre_multiservice_history.sql`, an add-on-era
+booking), then applies `multiservice-migration.sql` (sections 1-6). The t*
+and u* tests still run after it, proving the old frontend's calls keep
+working. `./run.sh --no-migration` skips only the multiservice migration:
+the v* tests (and u07, which checks the new signatures) fail.
 
 ## Original notes (guest booking)
 

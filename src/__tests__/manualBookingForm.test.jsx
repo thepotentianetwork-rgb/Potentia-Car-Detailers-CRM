@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
-  fetchServices: vi.fn(), fetchAddons: vi.fn(), fetchAvailability: vi.fn(), createManualBooking: vi.fn(), requestBooking: vi.fn(), createVehicle: vi.fn(),
+  fetchServices: vi.fn(), fetchAvailability: vi.fn(), createManualBooking: vi.fn(), requestBooking: vi.fn(), createVehicle: vi.fn(),
   fetchTenantCustomers: vi.fn(), fetchTenantStaff: vi.fn(), createGuestCustomer: vi.fn(),
 }));
-vi.mock("../api/services.js", () => ({ fetchServices: mocks.fetchServices, fetchAddons: mocks.fetchAddons }));
+vi.mock("../api/services.js", () => ({ fetchServices: mocks.fetchServices }));
 vi.mock("../api/bookings.js", () => ({ fetchAvailability: mocks.fetchAvailability, createManualBooking: mocks.createManualBooking, requestBooking: mocks.requestBooking }));
 vi.mock("../api/vehicles.js", () => ({ createVehicle: mocks.createVehicle }));
 vi.mock("../api/profiles.js", () => ({
@@ -30,7 +30,6 @@ beforeEach(() => {
   mocks.createGuestCustomer.mockResolvedValue({ id: "p-new" });
   mocks.createVehicle.mockResolvedValue({ id: "v-1" });
   mocks.createManualBooking.mockResolvedValue({ booking_id: "b-1" });
-  mocks.fetchAddons.mockResolvedValue([]);
 });
 afterEach(() => {
   cleanup();
@@ -66,7 +65,7 @@ describe("staff Add Booking form: dates and past slots", () => {
     fireEvent.click(slot("1:30 PM"));
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
     // one staff database call (customer + vehicle + approved booking + add-ons together)
-    expect(mocks.createManualBooking.mock.calls[0][0]).toMatchObject({ tenantId: "tenant-1", bookingDate: "2026-10-08", startTime: "13:30:00", newName: "Jamie Rivera", vehicleLabel: "2019 Tacoma", profileId: null, addonIds: [] });
+    expect(mocks.createManualBooking.mock.calls[0][0]).toMatchObject({ tenantId: "tenant-1", bookingDate: "2026-10-08", startTime: "13:30:00", newName: "Jamie Rivera", vehicleLabel: "2019 Tacoma", profileId: null, serviceIds: ["svc-1"] });
     expect(mocks.requestBooking).not.toHaveBeenCalled();
   });
 });

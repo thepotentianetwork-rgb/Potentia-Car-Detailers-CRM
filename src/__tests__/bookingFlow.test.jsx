@@ -86,7 +86,7 @@ describe("guest booking form", () => {
     expect(mocks.requestBooking).toHaveBeenCalledTimes(1);
     expect(mocks.requestBooking.mock.calls[0][0]).toEqual({
       tenantSlug: "shine",
-      serviceId: "svc-1",
+      serviceIds: ["svc-1"],
       bookingDate: "2026-10-08",
       startTime: "14:00:00",
       type: "dropoff",
@@ -178,7 +178,7 @@ describe("signed-in customer booking", () => {
     fireEvent.click(screen.getByRole("button", { name: /2:00 PM/ }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalled());
     expect(mocks.requestBooking.mock.calls[0][0]).toEqual({
-      tenantSlug: "shine", serviceId: "svc-1", bookingDate: "2026-10-08", startTime: "14:00:00", type: "dropoff",
+      tenantSlug: "shine", serviceIds: ["svc-1"], bookingDate: "2026-10-08", startTime: "14:00:00", type: "dropoff",
       vehicleLabel: "2022 Subaru Outback", vehicleColor: "Green", mobileAddress: "",
     });
     expect(mocks.createVehicle).not.toHaveBeenCalled();

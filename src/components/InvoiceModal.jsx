@@ -1,14 +1,15 @@
 import { X, Printer } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { dayLabel, minutesToDisplay, pgTimeToMinutes } from "../lib/time.js";
-import { bookingAddons } from "../lib/addons.js";
+import { bookingLineItems } from "../lib/bookingServices.js";
 
 export function InvoiceModal({ booking, onClose }) {
   const { config } = useTenant();
   const amount = (booking.price_cents || 0) / 100;
-  // price_cents is the total; each add-on is its own line at its booked price.
-  const addons = bookingAddons(booking);
-  const serviceAmount = amount - addons.reduce((s, a) => s + a.price_cents, 0) / 100;
+  // price_cents is the total; each service (or add-on, on older bookings) is
+  // its own line at its booked price.
+  const [first, ...rest] = bookingLineItems(booking);
+  const serviceAmount = (first.price_cents || 0) / 100;
   const invoiceNumber = booking.id.slice(0, 8).toUpperCase();
   const serviceDate = dayLabel(new Date(booking.booking_date + "T00:00:00"));
 
@@ -66,7 +67,7 @@ export function InvoiceModal({ booking, onClose }) {
           <tbody>
             <tr className="border-t border-[#E5E7EB]">
               <td className="py-3">
-                <div className="text-sm font-medium">{booking.services?.name || "Service"}</div>
+                <div className="text-sm font-medium">{first.name}</div>
                 <div className="text-[11px] text-[#6B7280] flex items-center gap-1">
                   {booking.type === "mobile" ? "Mobile" : "Drop-off"} · {minutesToDisplay(pgTimeToMinutes(booking.start_time))} · {booking.duration_min} min
                 </div>
@@ -76,13 +77,13 @@ export function InvoiceModal({ booking, onClose }) {
               </td>
               <td className="py-3 text-right text-sm font-medium">${serviceAmount.toFixed(2)}</td>
             </tr>
-            {addons.map((a) => (
-              <tr key={a.id || a.name} className="border-t border-[#E5E7EB]" data-testid="invoice-addon">
+            {rest.map((i) => (
+              <tr key={i.key} className="border-t border-[#E5E7EB]" data-testid="invoice-line">
                 <td className="py-2">
-                  <div className="text-sm">+ {a.name}</div>
-                  {a.extra_duration_min > 0 && <div className="text-[11px] text-[#6B7280]">Add-on · {a.extra_duration_min} min</div>}
+                  <div className="text-sm">{i.addon ? "+ " : ""}{i.name}</div>
+                  {i.duration_min > 0 && <div className="text-[11px] text-[#6B7280]">{i.addon ? "Add-on" : "Service"} · {i.duration_min} min</div>}
                 </td>
-                <td className="py-2 text-right text-sm">${(a.price_cents / 100).toFixed(2)}</td>
+                <td className="py-2 text-right text-sm">${(i.price_cents / 100).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>

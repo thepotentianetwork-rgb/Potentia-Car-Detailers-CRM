@@ -2,6 +2,7 @@ import { DollarSign, CheckCircle2, CalendarDays, Download } from "lucide-react";
 import { StatCard } from "../../components/StatCard.jsx";
 import { toCSV, downloadCSV } from "../../lib/csv.js";
 import { iso } from "../../lib/time.js";
+import { bookingTitle } from "../../lib/bookingServices.js";
 
 export function StatsTab({ bookings }) {
   const completed = bookings.filter((b) => b.status === "completed");
@@ -14,7 +15,7 @@ export function StatsTab({ bookings }) {
     const csv = toCSV(sorted, [
       { label: "Date", value: (b) => b.booking_date },
       { label: "Customer", value: (b) => b.profiles?.full_name || "" },
-      { label: "Service", value: (b) => b.services?.name || "" },
+      { label: "Service", value: (b) => bookingTitle(b) },
       { label: "Type", value: (b) => b.type },
       { label: "Amount", value: (b) => ((b.price_cents || 0) / 100).toFixed(2) },
     ]);

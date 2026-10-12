@@ -1,6 +1,8 @@
 import { supabase } from "../lib/supabaseClient.js";
 import { requireTenantId } from "./tenantScope.js";
 
+const uniqueIds = (ids) => [...new Set((ids || []).filter(Boolean))];
+
 export async function fetchAvailability(date, tenantId) {
   const { data, error } = await supabase
     .from("public_availability")
@@ -16,13 +18,15 @@ export async function fetchAvailability(date, tenantId) {
 // status itself and re-checks the slot. Error messages it raises are written
 // for customers, so they can be shown as-is.
 export async function requestBooking({
-  tenantSlug, serviceId, bookingDate, startTime, type, vehicleLabel, vehicleColor,
-  mobileAddress, guestName, guestPhone, guestEmail, guestZip, addonIds,
+  tenantSlug, serviceIds, bookingDate, startTime, type, vehicleLabel, vehicleColor,
+  mobileAddress, guestName, guestPhone, guestEmail, guestZip,
 }) {
-  const ids = [...new Set((addonIds || []).filter(Boolean))];
+  const ids = uniqueIds(serviceIds);
   const { data, error } = await supabase.rpc("request_booking", {
     p_tenant_slug: tenantSlug,
-    p_service_id: serviceId,
+    // First service doubles as bookings.service_id; the full list is summed server-side.
+    p_service_id: ids[0] || null,
+    p_service_ids: ids,
     p_booking_date: bookingDate,
     p_start_time: startTime,
     p_type: type,
@@ -33,24 +37,24 @@ export async function requestBooking({
     p_guest_phone: guestPhone || null,
     p_guest_email: guestEmail || null,
     p_guest_zip: guestZip || null,
-    // Only sent when chosen, so a no-add-on booking is the same call as before.
-    ...(ids.length > 0 && { p_addon_ids: ids }),
   });
   if (error) throw error;
   return Array.isArray(data) ? data[0] : data;
 }
 
 // Staff "Add Booking" (ManualBookingForm): one database transaction creates
-// the customer (if new), vehicle, approved booking and add-ons, and checks the
-// FULL duration against business hours and other bookings.
+// the customer (if new), vehicle, approved booking and its services, and
+// checks the FULL combined duration against business hours and other bookings.
 export async function createManualBooking({
-  tenantId, serviceId, bookingDate, startTime, type, vehicleLabel, profileId, newName, newPhone,
-  staffId, mobileAddress, addonIds,
+  tenantId, serviceIds, bookingDate, startTime, type, vehicleLabel, profileId, newName, newPhone,
+  staffId, mobileAddress,
 }) {
   requireTenantId(tenantId);
+  const ids = uniqueIds(serviceIds);
   const { data, error } = await supabase.rpc("create_manual_booking", {
     p_tenant_id: tenantId,
-    p_service_id: serviceId,
+    p_service_id: ids[0] || null,
+    p_service_ids: ids,
     p_booking_date: bookingDate,
     p_start_time: startTime,
     p_type: type,
@@ -60,7 +64,6 @@ export async function createManualBooking({
     p_new_phone: profileId ? null : newPhone || null,
     p_staff_id: staffId || null,
     p_mobile_address: type === "mobile" ? mobileAddress || null : null,
-    p_addon_ids: [...new Set((addonIds || []).filter(Boolean))],
   });
   if (error) throw error;
   return Array.isArray(data) ? data[0] : data;
@@ -92,7 +95,12 @@ export async function fetchMyBookings(userId) {
 // stats, customers, invoices).
 const TENANT_BOOKING_COLS =
   "*,profiles!profile_id(full_name,phone,email,zip,source),staff:profiles!staff_id(full_name),services(name),vehicles(label,color)";
+// booking_addons: history from the add-on era (still shown on old bookings).
+// booking_services: one snapshot row per service on multi-service bookings.
 const ADDON_COLS = ",booking_addons(id,addon_id,name,price_cents,extra_duration_min)";
+const SERVICE_COLS = ",booking_services(id,service_id,name,price_cents,duration_min,position)";
+const missingTable = (error, table) =>
+  error && new RegExp(table, "i").test(`${error.message} ${error.details || ""} ${error.hint || ""}`);
 
 export async function fetchTenantBookings(tenantId) {
   requireTenantId(tenantId);
@@ -103,10 +111,13 @@ export async function fetchTenantBookings(tenantId) {
       .eq("tenant_id", tenantId)
       .order("booking_date", { ascending: true })
       .order("start_time", { ascending: true });
-  let { data, error } = await run(TENANT_BOOKING_COLS + ADDON_COLS);
-  // Before services-addons-migration.sql is applied there is no
-  // booking_addons table; load the dashboard without add-ons instead of failing.
-  if (error && /booking_addons/i.test(`${error.message} ${error.details || ""} ${error.hint || ""}`)) {
+  let { data, error } = await run(TENANT_BOOKING_COLS + ADDON_COLS + SERVICE_COLS);
+  // Before multiservice-migration.sql is applied there is no booking_services
+  // table; load the dashboard without it instead of failing.
+  if (missingTable(error, "booking_services")) {
+    ({ data, error } = await run(TENANT_BOOKING_COLS + ADDON_COLS));
+  }
+  if (missingTable(error, "booking_addons")) {
     ({ data, error } = await run(TENANT_BOOKING_COLS));
   }
   if (error) throw error;
@@ -123,14 +134,13 @@ export async function updateBookingStatus(id, status) {
   return data;
 }
 
-// Staff: change service and add-ons on a booking. The server re-snapshots
-// the add-ons, recomputes price and full duration, and rejects the change if
-// the longer job would overlap another booking or run past closing.
-export async function setBookingServiceAddons(id, { serviceId, addonIds }) {
-  const { data, error } = await supabase.rpc("set_booking_service_addons", {
+// Staff: change the services on a booking. The server re-snapshots them,
+// recomputes price and full duration, and rejects the change if the longer
+// job would overlap another booking or run past closing.
+export async function setBookingServices(id, { serviceIds }) {
+  const { data, error } = await supabase.rpc("set_booking_services", {
     p_booking_id: id,
-    p_service_id: serviceId,
-    p_addon_ids: [...new Set((addonIds || []).filter(Boolean))],
+    p_service_ids: uniqueIds(serviceIds),
   });
   if (error) throw error;
   return Array.isArray(data) ? data[0] : data;
