@@ -54,6 +54,9 @@ export const DEFAULT_BRANDING = {
   // Formspree form (https://formspree.io/f/<id>) that gets a POST for every
   // new portal booking request, so the owner gets an email. null = no alert.
   bookingAlertFormspreeUrl: null,
+  // Owner dashboard theme: null = standard dashboard, "silver" = the
+  // silver-and-black dashboard (sidebar, overview, analytics).
+  ownerTheme: null,
 };
 
 export const TENANT_BRANDING = {

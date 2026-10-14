@@ -233,3 +233,19 @@ describe("confirmation screen", () => {
     expect(screen.getByText(/Saved to your account/)).toBeTruthy();
   });
 });
+
+describe("desktop layout", () => {
+  it("is a wider page with two columns at lg: contact/vehicle/drop-off left, services/date/times right", async () => {
+    await renderGuest();
+    const main = screen.getByRole("main");
+    expect(main.className).toMatch(/lg:max-w-3xl/);
+    expect(main.querySelector(".lg\\:grid-cols-2")).toBeTruthy();
+    const left = screen.getByTestId("booking-col-details");
+    const right = screen.getByTestId("booking-col-time");
+    expect(left.contains(screen.getByLabelText("Name"))).toBe(true);
+    expect(left.contains(screen.getByLabelText("Vehicle"))).toBe(true);
+    expect(left.textContent).toMatch(/Drop-off or Mobile/);
+    expect(right.contains(screen.getByTestId("booking-total"))).toBe(true);
+    expect(right.contains(screen.getByRole("button", { name: /2:00 PM/ }))).toBe(true);
+  });
+});

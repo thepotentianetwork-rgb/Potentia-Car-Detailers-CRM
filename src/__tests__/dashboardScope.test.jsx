@@ -38,7 +38,8 @@ afterEach(() => {
 
 describe("owner dashboard is scoped to the business in the URL", () => {
   it("loads bookings, customer vehicles and expenses for that business only", async () => {
-    mocks.tenant = { id: "t-juan", slug: "juans-auto-detailing", industry: "auto_detailing" };
+    // Standard dashboard (a shop without the silver theme).
+    mocks.tenant = { id: "t-juan", slug: "shine-shop", industry: "auto_detailing" };
     mocks.fetchTenantBookings.mockResolvedValue([juanBooking]);
     mocks.fetchTenantVehicles.mockResolvedValue([]);
     mocks.fetchTenantExpenses.mockResolvedValue([]);

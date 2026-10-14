@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { LogOut, Clock, CalendarDays, DollarSign, Receipt, Users, FileText, Wrench } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, Receipt, Users, FileText, Wrench } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { fetchTenantBookings, updateBookingStatus } from "../../api/bookings.js";
-import { TabButton } from "../../components/TabButton.jsx";
+import { DashboardLayout } from "../../components/DashboardLayout.jsx";
+import { getTenantBranding } from "../../tenants/branding.js";
+import { SilverDashboard } from "./silver/SilverDashboard.jsx";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 import { RequestsTab } from "./RequestsTab.jsx";
@@ -14,7 +16,7 @@ import { InvoicesTab } from "./InvoicesTab.jsx";
 import { ServicesTab } from "./ServicesTab.jsx";
 import { BookingLinkCard } from "../../components/BookingLinkCard.jsx";
 
-export function AdminDashboard({ session, onSignOut }) {
+export function AdminDashboard({ session, onSignOut, ownerName }) {
   const { tenant, config } = useTenant();
   const [tab, setTab] = useState("requests");
   const [bookings, setBookings] = useState(null);
@@ -43,39 +45,36 @@ export function AdminDashboard({ session, onSignOut }) {
 
   const pending = bookings?.filter((b) => b.status === "pending") || [];
 
-  return (
-    <div className="flex-1 flex flex-col">
-      <header className="flex items-center justify-between px-5 py-4 border-b border-[#1D1E21]">
-        <div style={{ fontFamily: "Montserrat, sans-serif" }} className="text-[14px] font-bold uppercase tracking-wide">{config.businessName} · Owner</div>
-        <button onClick={onSignOut} className="flex items-center gap-1.5 text-[12px] text-[#8B8F96] hover:text-[#F5F5F6]"><LogOut size={13} /> Sign out</button>
-      </header>
-      <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
-        <BookingLinkCard slug={tenant.slug} businessName={config.businessName} />
-        {error && <ErrorBox message={error} />}
-        {!bookings ? <LoadingBox center /> : (
-          <>
-            <div className="flex gap-1 bg-[#111214] border border-[#232529] rounded-lg p-1 mb-5">
-              <TabButton active={tab === "requests"} onClick={() => setTab("requests")} icon={<Clock size={13} />} label={`Requests${pending.length ? ` (${pending.length})` : ""}`} />
-              <TabButton active={tab === "schedule"} onClick={() => setTab("schedule")} icon={<CalendarDays size={13} />} label="Schedule" />
-              <TabButton active={tab === "stats"} onClick={() => setTab("stats")} icon={<DollarSign size={13} />} label="Stats" />
-            </div>
-            <div className="flex gap-1 bg-[#111214] border border-[#232529] rounded-lg p-1 mb-5">
-              <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users size={13} />} label="Customers" />
-              <TabButton active={tab === "invoices"} onClick={() => setTab("invoices")} icon={<FileText size={13} />} label="Invoices" />
-              <TabButton active={tab === "expenses"} onClick={() => setTab("expenses")} icon={<Receipt size={13} />} label="Expenses" />
-              <TabButton active={tab === "services"} onClick={() => setTab("services")} icon={<Wrench size={13} />} label="Services" />
-            </div>
+  if (getTenantBranding(tenant.slug).ownerTheme === "silver") {
+    return (
+      <SilverDashboard session={session} ownerName={ownerName} onSignOut={onSignOut} bookings={bookings} error={error} busyId={busyId} onAct={act} onRefresh={load} />
+    );
+  }
 
-            {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} allBookings={bookings} onRefresh={load} />}
-            {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} onRefresh={load} />}
-            {tab === "stats" && <StatsTab bookings={bookings} />}
-            {tab === "customers" && <CustomersTab bookings={bookings} tenantId={tenant.id} />}
-            {tab === "invoices" && <InvoicesTab bookings={bookings} onRefresh={load} />}
-            {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
-            {tab === "services" && <ServicesTab />}
-          </>
-        )}
-      </main>
-    </div>
+  const nav = [
+    { key: "requests", label: `Requests${pending.length ? ` (${pending.length})` : ""}`, icon: <Clock size={13} />, row: 0 },
+    { key: "schedule", label: "Schedule", icon: <CalendarDays size={13} />, row: 0 },
+    { key: "stats", label: "Stats", icon: <DollarSign size={13} />, row: 0 },
+    { key: "customers", label: "Customers", icon: <Users size={13} />, row: 1 },
+    { key: "invoices", label: "Invoices", icon: <FileText size={13} />, row: 1 },
+    { key: "expenses", label: "Expenses", icon: <Receipt size={13} />, row: 1 },
+    { key: "services", label: "Services", icon: <Wrench size={13} />, row: 1 },
+  ];
+
+  return (
+    <DashboardLayout title={`${config.businessName} · Owner`} nav={bookings ? nav : []} active={tab} onSelect={setTab} onSignOut={onSignOut}
+      top={<><BookingLinkCard slug={tenant.slug} businessName={config.businessName} />{error && <ErrorBox message={error} />}</>}>
+      {!bookings ? <LoadingBox center /> : (
+        <>
+          {tab === "requests" && <RequestsTab pending={pending} busyId={busyId} onAct={act} allBookings={bookings} onRefresh={load} />}
+          {tab === "schedule" && <ScheduleTab bookings={bookings} busyId={busyId} onAct={act} onRefresh={load} />}
+          {tab === "stats" && <StatsTab bookings={bookings} />}
+          {tab === "customers" && <CustomersTab bookings={bookings} tenantId={tenant.id} />}
+          {tab === "invoices" && <InvoicesTab bookings={bookings} onRefresh={load} />}
+          {tab === "expenses" && <ExpensesTab userId={session.user.id} />}
+          {tab === "services" && <ServicesTab />}
+        </>
+      )}
+    </DashboardLayout>
   );
 }
