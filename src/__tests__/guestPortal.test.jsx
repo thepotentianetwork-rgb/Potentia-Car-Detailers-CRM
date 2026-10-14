@@ -176,3 +176,42 @@ describe("signup form", () => {
     await waitFor(() => expect(onAuthed).toHaveBeenCalled());
   });
 });
+
+describe("hosts on the public booking page", () => {
+  const signedInAs = (profile) => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: "host-1", email: "host@example.com" } } } });
+    mocks.fetchProfile.mockResolvedValue({ id: "host-1", tenant_id: null, ...profile });
+  };
+
+  it.each([
+    ["Potentia admin", { role: "potentia_admin" }, "a Potentia admin", "Back to admin"],
+    ["shop owner", { role: "business_owner", tenant_id: "tenant-1" }, "staff", "Back to dashboard"],
+    ["shop staff", { role: "staff", tenant_id: "tenant-1" }, "staff", "Back to dashboard"],
+  ])("a signed-in %s stays on the portal, sees a note, and books through the guest form", async (_l, profile, who, back) => {
+    signedInAs(profile);
+    renderPortal();
+    const note = await screen.findByRole("status");
+    expect(note.textContent).toMatch(new RegExp(`signed in as ${who}`));
+    expect(note.textContent).toMatch(/saved as a guest request/);
+    expect(screen.getByRole("link", { name: back })).toBeTruthy();
+    expect(screen.queryByText("My Account")).toBeNull();
+    fireEvent.click(screen.getByText("Book a Service"));
+    expect(await screen.findByText("Guest booking flow")).toBeTruthy();
+    expect(screen.queryByText("Account booking flow")).toBeNull();
+    fireEvent.click(screen.getByText("Pick 2:00 PM"));
+    expect(await screen.findByText("Confirmed guest request")).toBeTruthy();
+  });
+
+  it("the admin's 'Back to admin' link points at the host portal", async () => {
+    signedInAs({ role: "potentia_admin" });
+    renderPortal();
+    expect((await screen.findByRole("link", { name: "Back to admin" })).getAttribute("href")).toBe("/crm/admin");
+  });
+
+  it("a shop's own customer gets no host note", async () => {
+    signedInAs({ role: "customer", tenant_id: "tenant-1" });
+    renderPortal();
+    await screen.findByText("My Account");
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+});

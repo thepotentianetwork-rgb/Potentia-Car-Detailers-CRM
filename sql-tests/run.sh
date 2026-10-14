@@ -2,8 +2,8 @@
 # SQL tests for the booking migrations, run against a THROWAWAY local
 # Postgres (never the live Supabase database). See README.md.
 #
-#   ./run.sh                  live-state mock -> apply multiservice migration -> run tests
-#   ./run.sh --no-migration   same, without multiservice-migration.sql (shows its tests failing)
+#   ./run.sh                  live-state mock -> apply host-booking migration -> run tests
+#   ./run.sh --no-migration   same, without host-booking-migration.sql (shows its tests failing)
 #
 # Env: SQLTEST_PSQL  psql command   (default: "sudo -u postgres psql")
 #      SQLTEST_DB    database name  (default: crm_guest_test; dropped and recreated)
@@ -12,7 +12,8 @@ cd "$(dirname "$0")"
 
 GUEST=../guest-booking-migration.sql
 ADDONS=../services-addons-migration.sql
-MIGRATION=../multiservice-migration.sql
+MULTI=../multiservice-migration.sql
+MIGRATION=../host-booking-migration.sql
 export DB=${SQLTEST_DB:-crm_guest_test}
 export PSQL=${SQLTEST_PSQL:-"sudo -u postgres psql"}
 
@@ -44,11 +45,13 @@ psql_q -d "$DB" -f "$ADDONS" >/dev/null 2>&1 || { echo "services-addons migratio
 # History that exists before the multiservice migration (a past booking
 # with a booking_addons row), so tests can prove the migration leaves it alone.
 psql_q -d "$DB" -f setup/03_pre_multiservice_history.sql >/dev/null 2>&1 || { echo "history seed failed" >&2; exit 2; }
-echo "Mock = live state: $GUEST PARTS 0-5 + $ADDONS sections 1-6"
+# multiservice-migration.sql (sections 1-6) is live too (2026-10-12).
+psql_q -d "$DB" -f "$MULTI" >/dev/null 2>&1 || { echo "multiservice migration failed to apply" >&2; exit 2; }
+echo "Mock = live state: $GUEST PARTS 0-5 + $ADDONS sections 1-6 + $MULTI sections 1-6"
 
 if [ $with_migration = 1 ]; then
   psql_q -d "$DB" -f "$MIGRATION" >/dev/null 2>&1 || { echo "migration failed to apply:" >&2; psql_q -d "$DB" -f "$MIGRATION" 2>&1 | grep -i error >&2; exit 2; }
-  echo "Applied $MIGRATION (sections 1-6)"
+  echo "Applied $MIGRATION"
 else
   echo "NOT applying $MIGRATION (--no-migration)"
 fi

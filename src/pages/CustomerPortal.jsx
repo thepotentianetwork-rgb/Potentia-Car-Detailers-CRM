@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { Navigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTenant } from "../context/TenantContext.jsx";
 import { Header } from "../components/Header.jsx";
@@ -30,10 +30,12 @@ export function CustomerPortal() {
     );
   }
 
-  // Staff/admins land on the portal by mistake sometimes - send them to their dashboard.
-  if (session && profile && profile.role !== "customer") {
-    return <Navigate to={profile.role === "potentia_admin" ? "/crm/admin" : `/crm/${tenantSlug}`} replace />;
-  }
+  // Potentia admins and shop owners/staff can open the public booking page to
+  // try it (no redirect to their dashboard). They book as a guest: the server
+  // treats any signed-in non-customer as a guest, so nothing is filed under
+  // their own account.
+  const host = !!(session && profile && profile.role !== "customer");
+  const hostHome = profile?.role === "potentia_admin" ? "/crm/admin" : `/crm/${tenantSlug}`;
 
   // Customers stay on their shop's portal after signing out (the Potentia client
   // login is for business owners, not the detailer's customers) and go back to
@@ -45,16 +47,16 @@ export function CustomerPortal() {
   };
 
   const wrongTenant = session && profile && profile.role === "customer" && profile.tenant_id !== tenant.id;
-  // Guest booking needs no session. If someone signs in meanwhile, the
-  // signed-in booking flow takes over instead.
-  const bookingAsGuest = screen === "guestBooking" && !session;
-  const bookingSignedIn = (screen === "customerBooking" || screen === "guestBooking") && session && profile && !wrongTenant;
+  // Guest booking needs no session (hosts book as guests too). If a customer
+  // signs in meanwhile, the signed-in booking flow takes over instead.
+  const bookingAsGuest = screen === "guestBooking" && (!session || host);
+  const bookingSignedIn = (screen === "customerBooking" || screen === "guestBooking") && session && profile && !wrongTenant && !host;
 
   return (
     <div style={brandingStyle(branding)} className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex flex-col">
       {screen !== "admin" && (
         <Header
-          loggedIn={!!session}
+          loggedIn={!!session && !host}
           onLogin={() => { setAuthMode("login"); setScreen("auth"); }}
           onDashboard={() => setScreen("customerBooking")}
           onSignOut={handleSignOut}
@@ -64,6 +66,17 @@ export function CustomerPortal() {
       {profileError && (
         <div className="mx-5 mt-3 flex items-start gap-2 bg-[#3D1515] border border-[#5C2323] rounded-lg px-3.5 py-2.5 text-[12px] text-[#E08A8A]">
           <AlertCircle size={14} className="shrink-0 mt-0.5" /> {profileError}
+        </div>
+      )}
+
+      {host && (
+        <div role="status" className="mx-5 mt-3 flex items-start gap-2 bg-[#1E2A3D] border border-[#2D3F5C] rounded-lg px-3.5 py-2.5 text-[12px] text-[#8FB3E8]">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <span>
+            You're signed in as {profile.role === "potentia_admin" ? "a Potentia admin" : "staff"}. This is the customer booking page; a test
+            booking here is saved as a guest request (pending) and shows up in Requests.{" "}
+            <Link to={hostHome} className="underline">Back to {profile.role === "potentia_admin" ? "admin" : "dashboard"}</Link>
+          </span>
         </div>
       )}
 
@@ -78,6 +91,7 @@ export function CustomerPortal() {
         {screen === "home" && (
           <Homepage
             onBook={() => {
+              if (host) return setScreen("guestBooking");
               if (session) return setScreen("customerBooking");
               setAuthMode("choose");
               setScreen("auth");
