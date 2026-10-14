@@ -69,3 +69,21 @@ describe("staff Add Booking form: dates and past slots", () => {
     expect(mocks.requestBooking).not.toHaveBeenCalled();
   });
 });
+
+describe("staff Add Booking form: booking window", () => {
+  it("lets staff book a customer months ahead (up to 180 days), not just the next six days", async () => {
+    vi.setSystemTime(new Date("2026-10-08T19:05:00Z"));
+    const onCreated = vi.fn();
+    render(<ManualBookingForm onClose={() => {}} onCreated={onCreated} />);
+    const jump = await screen.findByLabelText("Jump to date");
+    expect(jump.getAttribute("max")).toBe("2027-04-06");
+    fireEvent.change(jump, { target: { value: "2027-01-06" } });
+    await screen.findByText("Wed, Jan 6");
+    fireEvent.change(screen.getByPlaceholderText("e.g. Jamie Rivera"), { target: { value: "Jamie Rivera" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. 2021 Ford F-150"), { target: { value: "2019 Tacoma" } });
+    await waitFor(() => expect(slot("9:00 AM")).toBeTruthy());
+    fireEvent.click(slot("9:00 AM"));
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+    expect(mocks.createManualBooking.mock.calls[0][0]).toMatchObject({ bookingDate: "2027-01-06", startTime: "09:00:00" });
+  });
+});

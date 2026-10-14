@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { iso, getNextDays, getAvailableStarts, earliestStartFor, dayLabel, MIN_LEAD_MIN } from "../lib/time.js";
+import { BOOKING_WINDOW_DAYS, getBookingDays, dayIndexOnOrAfter, iso, getNextDays, getAvailableStarts, earliestStartFor, dayLabel, MIN_LEAD_MIN } from "../lib/time.js";
 
 // vitest.config.js runs tests in UTC, so the "browser" here is never in the
 // business's zone (America/Denver).
@@ -78,5 +78,20 @@ describe("past slots today", () => {
 
   it("existing callers without minStart still get every free slot", () => {
     expect(getAvailableStarts([], 60, "dropoff", hours, 60, 30)).toEqual([540, 600, 660, 720, 780, 840, 900, 960]);
+  });
+});
+
+describe("booking window", () => {
+  it("is today through today + 180 in the shop's zone", () => {
+    expect(BOOKING_WINDOW_DAYS).toBeGreaterThanOrEqual(90);
+    const days = getBookingDays(DENVER, new Date("2026-10-09T01:30:00Z"));
+    expect(days).toHaveLength(181);
+    expect(iso(days[0])).toBe("2026-10-08");
+    expect(iso(days[180])).toBe("2027-04-06");
+  });
+  it("dayIndexOnOrAfter snaps a closed/missing day to the next listed one", () => {
+    const days = getBookingDays(DENVER, new Date("2026-10-09T01:30:00Z")).filter((d) => d.getDay() !== 0);
+    expect(iso(days[dayIndexOnOrAfter(days, "2026-10-11")])).toBe("2026-10-12"); // Sunday -> Monday
+    expect(dayIndexOnOrAfter(days, "2027-05-01")).toBe(-1);
   });
 });

@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { rescheduleBooking } from "../../api/bookings.js";
-import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
+import { JumpToDate } from "../../components/JumpToDate.jsx";
+import { getAvailableStarts, getBookingDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
 import { minutesText } from "../../lib/addons.js";
 
 // Bookings that still hold their time on the calendar.
@@ -23,7 +24,7 @@ export function rescheduleStarts(booking, allBookings, dateKey, config, now = ne
 // server (reschedule_booking) re-checks everything and keeps the status.
 export function RescheduleForm({ booking, allBookings, onCancel, onSaved }) {
   const { config } = useTenant();
-  const days = useMemo(() => getNextDays(14, config.timezone), [config.timezone]);
+  const days = useMemo(() => getBookingDays(config.timezone), [config.timezone]);
   const startIndex = Math.max(0, days.findIndex((d) => iso(d) === booking.booking_date));
   const [dayIndex, setDayIndex] = useState(startIndex);
   const [picked, setPicked] = useState(null);
@@ -59,6 +60,8 @@ export function RescheduleForm({ booking, allBookings, onCancel, onSaved }) {
         <div className="flex-1 text-center text-[12px] font-medium">{dayLabel(days[dayIndex])}</div>
         <button type="button" aria-label="Next day" onClick={() => go(1)} disabled={dayIndex === days.length - 1} className="p-1 border border-[#232529] rounded text-[#8B8F96] disabled:opacity-30"><ChevronRight size={12} /></button>
       </div>
+      <JumpToDate days={days} index={dayIndex} onPick={(i) => { setPicked(null); setDayIndex(i); }}
+        className="w-full bg-[#111214] border border-[#232529] rounded px-2 py-1 text-[12px] outline-none [color-scheme:dark]" />
       {starts.length === 0 ? (
         <div className="text-[11px] text-[#5C5F66] text-center py-2">No open time on this day fits this {minutesText(booking.duration_min)} job.</div>
       ) : (

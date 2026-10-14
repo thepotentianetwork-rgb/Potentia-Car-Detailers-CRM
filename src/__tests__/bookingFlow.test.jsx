@@ -234,6 +234,29 @@ describe("confirmation screen", () => {
   });
 });
 
+describe("booking window", () => {
+  it("offers dates up to 180 days ahead (not just the next six days) and books one months out", async () => {
+    const onConfirm = await renderGuest();
+    const jump = screen.getByLabelText("Jump to date");
+    expect(jump.getAttribute("min")).toBe("2026-10-08");
+    expect(jump.getAttribute("max")).toBe("2027-04-06"); // today + 180
+    fillGuest();
+    fireEvent.change(jump, { target: { value: "2027-02-05" } });
+    expect(await screen.findByText("Fri, Feb 5")).toBeTruthy();
+    await waitFor(() => expect(mocks.fetchAvailability).toHaveBeenCalledWith("2027-02-05", "tenant-1"));
+    fireEvent.click(await screen.findByRole("button", { name: /10:00 AM/ }));
+    await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+    expect(mocks.requestBooking.mock.calls[0][0].bookingDate).toBe("2027-02-05");
+  });
+
+  it("the next-day arrow keeps going past two weeks", async () => {
+    await renderGuest();
+    const next = screen.getByText("Thu, Oct 8").nextElementSibling;
+    for (let i = 0; i < 20; i++) fireEvent.click(next);
+    expect(screen.getByText("Wed, Oct 28")).toBeTruthy();
+  });
+});
+
 describe("desktop layout", () => {
   it("is a wider page with two columns at lg: contact/vehicle/drop-off left, services/date/times right", async () => {
     await renderGuest();

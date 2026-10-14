@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Home, Building2, Pencil, Receipt, Plus, CalendarClock } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
-import { getNextDays, iso, dayLabel, minutesToDisplay, pgTimeToMinutes, parse12h, bookingBusyInterval } from "../../lib/time.js";
+import { BOOKING_WINDOW_DAYS, getNextDays, iso, dayLabel, minutesToDisplay, pgTimeToMinutes, parse12h, bookingBusyInterval } from "../../lib/time.js";
 import { fetchAllServices } from "../../api/services.js";
 import { setBookingServices } from "../../api/bookings.js";
 import { bookingAddons, dollars, minutesText } from "../../lib/addons.js";
@@ -13,7 +13,10 @@ import { ManualBookingForm } from "./ManualBookingForm.jsx";
 
 export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
   const { tenant, config } = useTenant();
-  const days = getNextDays(6);
+  // Next 6 days by default; "Show more days" extends through the booking window
+  // so jobs booked months ahead can still be found, edited and rescheduled.
+  const [span, setSpan] = useState(6);
+  const days = getNextDays(span, config.timezone);
   const dayStart = parse12h(config.businessHours.start);
   const dayEnd = parse12h(config.businessHours.end);
   const totalMin = dayEnd - dayStart;
@@ -143,6 +146,16 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
           </div>
         );
       })}
+
+      {span <= BOOKING_WINDOW_DAYS && (() => {
+        const later = bookings.filter((b) => b.booking_date > iso(days[days.length - 1]) && (b.status === "pending" || b.status === "approved")).length;
+        return (
+          <button onClick={() => setSpan((n) => Math.min(BOOKING_WINDOW_DAYS + 1, n + 14))}
+            className="w-full text-[12px] font-medium text-[#C9CDD3] border border-[#232529] hover:border-[#4A4D53] py-2.5 rounded-lg">
+            Show more days{later ? ` (${later} later booking${later === 1 ? "" : "s"})` : ""}
+          </button>
+        );
+      })()}
 
       {invoiceBooking && <InvoiceModal booking={invoiceBooking} onClose={() => setInvoiceBooking(null)} />}
       {addingBooking && (

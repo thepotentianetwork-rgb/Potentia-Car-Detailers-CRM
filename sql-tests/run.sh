@@ -52,6 +52,8 @@ echo "Mock = live state: $GUEST PARTS 0-5 + $ADDONS sections 1-6 + $MULTI sectio
 if [ $with_migration = 1 ]; then
   psql_q -d "$DB" -f "$MIGRATION" >/dev/null 2>&1 || { echo "migration failed to apply:" >&2; psql_q -d "$DB" -f "$MIGRATION" 2>&1 | grep -i error >&2; exit 2; }
   echo "Applied $MIGRATION"
+  psql_q -d "$DB" -f ../booking-window-migration.sql >/dev/null 2>&1 || { echo "booking-window migration failed to apply" >&2; exit 2; }
+  echo "Applied ../booking-window-migration.sql"
 else
   echo "NOT applying $MIGRATION (--no-migration)"
 fi

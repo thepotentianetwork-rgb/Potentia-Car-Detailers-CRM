@@ -3,7 +3,8 @@ import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react"
 import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
 import { fetchAvailability, requestBooking } from "../api/bookings.js";
-import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
+import { JumpToDate } from "../components/JumpToDate.jsx";
+import { getAvailableStarts, getBookingDays, dayIndexOnOrAfter, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { useBranding, priceLabel } from "../tenants/branding.js";
 import { buildBookingAlert, sendBookingAlert } from "../lib/bookingAlert.js";
@@ -24,11 +25,11 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const { tenant, config } = useTenant();
   const branding = useBranding();
   const closedWeekdays = branding.closedWeekdays;
-  // The next 6 days the business is open. Days are local-noon Dates holding
-  // the business's calendar date, so getDay() is the business's weekday.
-  // 14 days covers today..+13, the window request_booking() accepts.
+  // Every day the business is open from today through BOOKING_WINDOW_DAYS
+  // ahead (the window request_booking() accepts). Days are local-noon Dates
+  // holding the business's calendar date, so getDay() is the business's weekday.
   const days = useMemo(
-    () => getNextDays(14, config.timezone).filter((d) => !closedWeekdays.includes(d.getDay())).slice(0, 6),
+    () => getBookingDays(config.timezone).filter((d) => !closedWeekdays.includes(d.getDay())),
     [config.timezone, closedWeekdays]
   );
   const [services, setServices] = useState(null);
@@ -265,6 +266,8 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         <div className="flex-1 text-center bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg py-2.5 text-sm font-medium">{dayLabel(selectedDay)}</div>
         <button onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronRight size={14} /></button>
       </div>
+      <JumpToDate days={days} index={dayIndex} onPick={setDayIndex}
+        className="-mt-3 mb-5 w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3 py-2 text-[13px] text-[var(--brand-text)] outline-none [color-scheme:dark]" />
 
       <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Available Start Times</label>
       {error && <ErrorBox message={error} />}
