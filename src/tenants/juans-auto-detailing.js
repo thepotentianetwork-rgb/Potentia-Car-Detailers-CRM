@@ -52,6 +52,9 @@ export default {
   // a new form for Juan and put its ID here. Formspree must also accept posts
   // from the CRM's domain (check the form's allowed-domains setting).
   bookingAlertFormspreeUrl: "https://formspree.io/f/mykaqben",
+  // Owner/staff dashboard look: the silver-and-black redesign
+  // (src/pages/admin/silver/). Other shops get the standard dashboard.
+  ownerTheme: "silver",
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",
   // Keyed by services.name in the seed file. Copy, "from" prices and duration
   // labels are from services.html. `includes` is now only a FALLBACK: the

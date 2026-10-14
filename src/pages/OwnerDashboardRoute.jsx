@@ -61,7 +61,7 @@ export function OwnerDashboardRoute() {
       {tenant.industry === "dealership" ? (
         <DealershipDashboard session={session} onSignOut={signOut} />
       ) : (
-        <AdminDashboard session={session} onSignOut={signOut} />
+        <AdminDashboard session={session} onSignOut={signOut} ownerName={profile.full_name} />
       )}
     </div>
   );

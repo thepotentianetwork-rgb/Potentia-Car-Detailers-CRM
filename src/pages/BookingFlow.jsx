@@ -180,7 +180,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   if (!services) return <LoadingBox center />;
 
   return (
-    <main className="flex-1 px-5 py-6 max-w-md mx-auto w-full">
+    <main className="flex-1 px-5 py-6 lg:py-10 max-w-md lg:max-w-3xl mx-auto w-full">
       <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-lg font-bold mb-1">Book a Service</h1>
       {guest ? (
         <p className="text-[13px] text-[var(--brand-muted)] mb-5">No account needed. Pick a time and {config.businessName} will reach out to confirm.</p>
@@ -188,6 +188,10 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         <div className="mb-3" />
       )}
 
+      {/* Phones: one column. Desktop: contact, vehicle and drop-off/mobile on
+          the left; services, date and start times on the right. */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start">
+      <div data-testid="booking-col-details">
       {guest && (
         <>
           <label htmlFor="guest-name" className={labelCls}>Name</label>
@@ -229,12 +233,6 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         </div>
       </div>
 
-      <ServicePicker services={services} selectedIds={serviceIds} onChange={setServiceIds}
-        priceText={(s) => priceLabel(s, branding)} className="mb-2" />
-      <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mb-5">
-        {picked ? `Total: ${totalLabel(totals.priceCents)} · ${minutesText(totals.durationMin)}` : "Pick at least one service."}
-      </p>
-
       <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Drop-off or Mobile</label>
       <div className="flex gap-2.5 mb-2">
         <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
@@ -252,6 +250,14 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">Drop-off at {branding.contact.address}</p>
       )}
       {type !== "mobile" && !branding.contact?.address && <div className="mb-3" />}
+
+      </div>
+      <div data-testid="booking-col-time">
+      <ServicePicker services={services} selectedIds={serviceIds} onChange={setServiceIds}
+        priceText={(s) => priceLabel(s, branding)} className="mb-2" />
+      <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mb-5">
+        {picked ? `Total: ${totalLabel(totals.priceCents)} · ${minutesText(totals.durationMin)}` : "Pick at least one service."}
+      </p>
 
       <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Date</label>
       <div className="flex items-center gap-2 mb-5">
@@ -280,6 +286,8 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
           ))}
         </div>
       )}
+      </div>
+      </div>
     </main>
   );
 }

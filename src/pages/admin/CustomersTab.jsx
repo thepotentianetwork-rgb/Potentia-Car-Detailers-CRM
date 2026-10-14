@@ -97,7 +97,7 @@ function CustomerCard({ customer, vehicles }) {
   );
 }
 
-function VehicleNotes({ vehicle }) {
+export function VehicleNotes({ vehicle }) {
   const [notes, setNotes] = useState(vehicle.notes || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

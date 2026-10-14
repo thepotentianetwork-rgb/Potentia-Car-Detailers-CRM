@@ -85,11 +85,17 @@ describe("Your booking link card", () => {
 });
 
 describe("owner dashboards show the card at the top", () => {
-  it("detailing dashboard (Juan)", async () => {
+  it("standard detailing dashboard", async () => {
+    mocks.tenant = { id: "t2", slug: "shine-shop", industry: "auto_detailing" };
+    render(<AdminDashboard session={{ user: { id: "u1" } }} onSignOut={vi.fn()} />);
+    expect(screen.getByLabelText("Booking link").textContent).toBe("https://portal.potentianetwork.com/crm/shine-shop/portal");
+    await screen.findByText("Requests tab");
+  });
+
+  it("Juan's silver dashboard shows it on the overview", async () => {
     mocks.tenant = { id: "t1", slug: "juans-auto-detailing", industry: "auto_detailing" };
     render(<AdminDashboard session={{ user: { id: "u1" } }} onSignOut={vi.fn()} />);
-    expect(screen.getByLabelText("Booking link").textContent).toBe(JUAN);
-    await screen.findByText("Requests tab");
+    expect((await screen.findByLabelText("Booking link")).textContent).toBe(JUAN);
   });
 
   it("dealership dashboard (Route Six)", () => {

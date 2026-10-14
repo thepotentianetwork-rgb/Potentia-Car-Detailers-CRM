@@ -127,4 +127,13 @@ describe("portal homepage", () => {
     expect(screen.getByText("$50")).toBeTruthy();
     expect(screen.queryByText(/Contact & Hours/)).toBeNull();
   });
+
+  it("service list is a grid on desktop (one column on phones) in a wider page", async () => {
+    render(<Homepage onBook={vi.fn()} />);
+    await screen.findByText("Basic Wash");
+    const list = screen.getByTestId("service-list");
+    expect(list.className).toMatch(/lg:grid lg:grid-cols-2/);
+    expect(list.className).toMatch(/space-y-2\.5/);
+    expect(list.parentElement.className).toMatch(/max-w-md lg:max-w-3xl/);
+  });
 });

@@ -46,7 +46,7 @@ export function Homepage({ onBook }) {
             background: `radial-gradient(ellipse 70% 50% at 50% 50%, transparent 0%, rgba(${rgb(bg)},0.6) 60%, rgba(${rgb(bg)},0.95) 85%, ${bg} 100%), linear-gradient(to bottom, ${bg} 0%, transparent 25%, transparent 75%, ${bg} 100%)`,
           }}
         />
-        <div className="relative z-10 max-w-md mx-auto py-16">
+        <div className="relative z-10 max-w-md lg:max-w-2xl mx-auto py-16">
           <img
             src={branding.logo.src}
             alt={branding.logo.alt}
@@ -64,13 +64,13 @@ export function Homepage({ onBook }) {
           </button>
         </div>
       </section>
-      <section className="px-5 pb-12 max-w-md mx-auto">
+      <section className="px-5 pb-12 max-w-md lg:max-w-3xl mx-auto">
         <h2 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-[12px] font-bold uppercase tracking-wide text-[var(--brand-muted)] mb-3">
           Services
         </h2>
         {error && <ErrorBox message={error} />}
         {!services && !error && <LoadingBox />}
-        <div className="space-y-2.5">
+        <div data-testid="service-list" className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
           {services?.map((s) => {
             // Owner-edited description first; tenant file copy if it's blank.
             const includes = serviceIncludes(s, branding);

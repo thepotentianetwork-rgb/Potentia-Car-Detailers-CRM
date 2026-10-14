@@ -9,7 +9,7 @@ import { RescheduleForm } from "./RescheduleForm.jsx";
 // The shop calls and texts from Google Voice, so phone numbers are shown with
 // a Copy button. Never render tel: or sms: links here: they open the phone's
 // own dialer/messages app instead of Google Voice.
-async function copyText(text) {
+export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
@@ -32,7 +32,7 @@ async function copyText(text) {
   }
 }
 
-function PhoneWithCopy({ phone }) {
+export function PhoneWithCopy({ phone }) {
   const [status, setStatus] = useState("");
   const shown = formatPhone(phone);
   const copy = async () => {
