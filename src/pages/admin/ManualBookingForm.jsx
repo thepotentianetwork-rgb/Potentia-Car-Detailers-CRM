@@ -8,14 +8,16 @@ import { fetchTenantCustomers, fetchTenantStaff } from "../../api/profiles.js";
 import { dollars, minutesText } from "../../lib/addons.js";
 import { serviceTotals } from "../../lib/bookingServices.js";
 import { ServicePicker } from "../../components/ServicePicker.jsx";
-import { getAvailableStarts, getNextDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
+import { JumpToDate } from "../../components/JumpToDate.jsx";
+import { getAvailableStarts, getBookingDays, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../../lib/time.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
 
 export function ManualBookingForm({ onClose, onCreated }) {
   const { tenant, config } = useTenant();
   const { profile } = useAuth();
-  const days = useMemo(() => getNextDays(6, config.timezone), [config.timezone]);
+  // Staff can book any day in the booking window (create_manual_booking has no upper limit).
+  const days = useMemo(() => getBookingDays(config.timezone), [config.timezone]);
 
   const [customers, setCustomers] = useState(null);
   const [customerMode, setCustomerMode] = useState("new");
@@ -196,6 +198,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
               <div className="flex-1 text-center bg-[#111214] border border-[#232529] rounded-lg py-2.5 text-sm font-medium">{dayLabel(selectedDay)}</div>
               <button onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[#232529] rounded-md text-[#8B8F96] disabled:opacity-30"><ChevronRight size={14} /></button>
             </div>
+            <JumpToDate days={days} index={dayIndex} onPick={setDayIndex}
+              className="-mt-3 mb-5 w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3 py-2 text-[13px] outline-none [color-scheme:dark]" />
 
             <label className="text-[11px] uppercase tracking-wide text-[#8B8F96] mb-1.5 block">Start Time</label>
             {error && <ErrorBox message={error} />}

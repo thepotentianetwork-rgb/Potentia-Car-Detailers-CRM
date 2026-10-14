@@ -32,6 +32,7 @@ vi.mock("../context/TenantContext.jsx", () => ({
 
 import { BookingFlow } from "../pages/BookingFlow.jsx";
 import { ManualBookingForm } from "../pages/admin/ManualBookingForm.jsx";
+import { iso } from "../lib/time.js";
 import { ScheduleTab } from "../pages/admin/ScheduleTab.jsx";
 import { RequestsTab } from "../pages/admin/RequestsTab.jsx";
 import { ServicesTab, parseCatalogForm } from "../pages/admin/ServicesTab.jsx";
@@ -288,6 +289,30 @@ describe("Schedule tab", () => {
     fireEvent.click(within(form).getByLabelText(/^Pet Hair Removal · /));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText(/overlap another booking/)).toBeTruthy();
+  });
+
+  it("schedule shows bookings weeks ahead after Show more days", async () => {
+    const far = { ...b2, id: "b9", booking_date: iso(new Date(Date.now() + 20 * 86400000), "America/Denver"), profiles: { full_name: "Far Away" } };
+    render(<ScheduleTab bookings={[b1, far]} busyId={null} onAct={() => {}} onRefresh={() => {}} />);
+    const bars = () => screen.queryAllByTestId("timeline-bar").length;
+    const before = bars();
+    fireEvent.click(screen.getByText(/Show more days \(1 later booking\)/));
+    fireEvent.click(screen.getByText(/Show more days/));
+    expect(bars()).toBe(before + 1);
+    expect(screen.getByText(/^Show more days$/)).toBeTruthy();
+  });
+
+  it("reschedule can move a booking months ahead (jump to date, up to 180 days)", async () => {
+    render(<ScheduleTab bookings={[b1, b2]} busyId={null} onAct={() => {}} onRefresh={() => {}} />);
+    fireEvent.click(within(screen.getByText(/Full Detail/).closest("div")).getByLabelText("Reschedule"));
+    const form = screen.getByTestId("reschedule-form");
+    const jump = within(form).getByLabelText("Jump to date");
+    expect(jump.getAttribute("max")).toBe(iso(new Date(Date.now() + 180 * 86400000), "America/Denver"));
+    const target = iso(new Date(Date.now() + 120 * 86400000), "America/Denver");
+    fireEvent.change(jump, { target: { value: target } });
+    fireEvent.click(within(form).getByRole("button", { name: /11:00 AM/ }));
+    fireEvent.click(within(form).getByRole("button", { name: "Move to 11:00 AM" }));
+    await waitFor(() => expect(mocks.rescheduleBooking).toHaveBeenCalledWith("b2", { bookingDate: target, startTime: "11:00:00" }));
   });
 
   it("reschedule offers only open slots for the full duration, excluding the booking itself", async () => {

@@ -65,3 +65,9 @@ a local socket, or if `DATABASE_URL`/`PGSERVICE` is set.
   per-day advisory lock stops double booking.
 - If the live schema changes, update `setup/00_mock_live_schema.sql` to
   match. Read the catalog only; never write to the live database from here.
+
+## Booking window (x* tests)
+
+`booking-window-migration.sql` (NOT applied live yet) raises request_booking()'s
+limit from today + 13 to today + 180 days. `run.sh` applies it after the
+host-booking migration; `x01` and the updated `t05` fail without it.

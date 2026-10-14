@@ -92,4 +92,18 @@ export function earliestStartFor(dateKey, now = new Date(), timeZone, leadMin = 
   return Number(p.hour) * 60 + Number(p.minute) + leadMin;
 }
 
+// How far ahead bookings can be made: today plus this many days (about six
+// months). request_booking() enforces the same number server-side
+// (c_max_days_ahead, booking-window-migration.sql); staff RPCs have no limit.
+export const BOOKING_WINDOW_DAYS = 180;
+
+// Every bookable day: today .. today + BOOKING_WINDOW_DAYS in the shop's zone.
+export const getBookingDays = (timeZone, now = new Date()) => getNextDays(BOOKING_WINDOW_DAYS + 1, timeZone, now);
+
+// Index of the first day on/after dateKey (YYYY-MM-DD) in `days`, for the
+// "jump to date" box; -1 if it's past the last day.
+export function dayIndexOnOrAfter(days, dateKey) {
+  return days.findIndex((d) => iso(d) >= dateKey);
+}
+
 export const dayLabel = (d) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });

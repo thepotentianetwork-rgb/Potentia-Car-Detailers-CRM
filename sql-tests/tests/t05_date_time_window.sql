@@ -1,7 +1,7 @@
--- TEST: past dates, dates past +13 days, out-of-hours, off-grid and already-passed times are rejected
+-- TEST: past dates, dates past +180 days, out-of-hours, off-grid and already-passed times are rejected
 select sqltest.as_anon();
-select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '09:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(-1)), '%next two weeks%');
-select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '09:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(14)), '%next two weeks%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '09:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(-1)), '%next 6 months%');
+select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '09:00','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(181)), '%next 6 months%');
 select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '16:30','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(4)), '%isn''t available%');
 select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '08:30','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(4)), '%isn''t available%');
 select sqltest.expect_error(format($q$select public.request_booking('shop-a','aaaaaaaa-0000-0000-0000-000000000001', %s, '09:10','dropoff','2019 Kia Soul',null,null,'Al Guest','5552010003',null,null)$q$, sqltest.d(4)), '%isn''t available%');
