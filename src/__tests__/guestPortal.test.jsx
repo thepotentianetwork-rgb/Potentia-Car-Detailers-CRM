@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
   signIn: vi.fn(),
   signOut: vi.fn(),
+  slug: "shine",
 }));
 vi.mock("../lib/supabaseClient.js", () => ({
   supabase: { auth: { getSession: mocks.getSession, onAuthStateChange: mocks.onAuthStateChange } },
@@ -17,7 +18,7 @@ vi.mock("../lib/supabaseClient.js", () => ({
 vi.mock("../api/profiles.js", () => ({ fetchProfile: mocks.fetchProfile }));
 vi.mock("../api/auth.js", () => ({ signUp: mocks.signUp, signIn: mocks.signIn, signOut: mocks.signOut }));
 vi.mock("../context/TenantContext.jsx", () => ({
-  useTenant: () => ({ tenant: { id: "tenant-1", slug: "shine", name: "Shine Shop" }, config: { businessName: "Shine Shop" } }),
+  useTenant: () => ({ tenant: { id: "tenant-1", slug: mocks.slug, name: "Shine Shop" }, config: { businessName: "Shine Shop" } }),
 }));
 // AuthScreen is the real one. The heavy screens are stubs that show which
 // booking flow (guest or account) the portal picked.
@@ -46,6 +47,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.slug = "shine";
 });
 
 function renderPortal() {
@@ -213,5 +215,48 @@ describe("hosts on the public booking page", () => {
     renderPortal();
     await screen.findByText("My Account");
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("guest-only portal (Juan's Auto Detailing)", () => {
+  beforeEach(() => { mocks.slug = "juans-auto-detailing"; });
+
+  it("has no Log In / sign-up anywhere: Book goes straight to the guest form", async () => {
+    const { container } = renderPortal();
+    fireEvent.click(await screen.findByText("Book a Service"));
+    expect(await screen.findByText("Guest booking flow")).toBeTruthy();
+    expect(screen.queryByText("Log In")).toBeNull();
+    expect(screen.queryByText(/Create an account|Continue as guest|Sign in|Sign up/i)).toBeNull();
+    expect(container.innerHTML).not.toMatch(/tel:|sms:/i);
+    fireEvent.click(screen.getByText("Pick 2:00 PM"));
+    expect(await screen.findByText("Confirmed guest request")).toBeTruthy();
+    expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+
+  it("other shops keep Log In and the account choice", async () => {
+    mocks.slug = "shine";
+    renderPortal();
+    expect(await screen.findByText("Log In")).toBeTruthy();
+    fireEvent.click(screen.getByText("Book a Service"));
+    expect(screen.getByRole("button", { name: "Create an account" })).toBeTruthy();
+  });
+
+  it("an existing signed-in customer of Juan's still books on their account and can sign out", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: "c-1", email: "c@example.com" } } } });
+    mocks.fetchProfile.mockResolvedValue({ id: "c-1", role: "customer", tenant_id: "tenant-1", full_name: "Cam" });
+    renderPortal();
+    await screen.findByText("My Account");
+    fireEvent.click(screen.getByText("Book a Service"));
+    expect(await screen.findByText("Account booking flow")).toBeTruthy();
+  });
+
+  it("the admin 'signed in as' note still shows and the admin books as a guest", async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: "host-1", email: "h@example.com" } } } });
+    mocks.fetchProfile.mockResolvedValue({ id: "host-1", tenant_id: null, role: "potentia_admin" });
+    renderPortal();
+    expect((await screen.findByRole("status")).textContent).toMatch(/signed in as a Potentia admin/);
+    fireEvent.click(screen.getByText("Book a Service"));
+    expect(await screen.findByText("Guest booking flow")).toBeTruthy();
   });
 });

@@ -2,7 +2,7 @@ import { LogOut, User } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { useBranding } from "../tenants/branding.js";
 
-export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
+export function Header({ loggedIn, onLogin, onDashboard, onSignOut, showLogin = true }) {
   const { config } = useTenant();
   const branding = useBranding();
   return (
@@ -28,7 +28,7 @@ export function Header({ loggedIn, onLogin, onDashboard, onSignOut }) {
             <LogOut size={13} />
           </button>
         </div>
-      ) : (
+      ) : !showLogin ? null : (
         <button
           onClick={onLogin}
           className="flex items-center gap-1.5 text-[13px] font-medium border border-[var(--brand-border-strong)] hover:border-[var(--brand-border-hover)] px-3.5 py-1.5 rounded-md transition-colors"
