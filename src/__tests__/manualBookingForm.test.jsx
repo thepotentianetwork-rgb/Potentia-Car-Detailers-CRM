@@ -87,3 +87,26 @@ describe("staff Add Booking form: booking window", () => {
     expect(mocks.createManualBooking.mock.calls[0][0]).toMatchObject({ bookingDate: "2027-01-06", startTime: "09:00:00" });
   });
 });
+
+describe("staff Add Booking, mobile", () => {
+  it("won't book a mobile job until street, city and ZIP are filled, then sends them as one address", async () => {
+    vi.setSystemTime(new Date("2026-10-08T19:05:00Z"));
+    const onCreated = vi.fn();
+    render(<ManualBookingForm onClose={() => {}} onCreated={onCreated} />);
+    await waitFor(() => expect(slot("1:30 PM")).toBeTruthy());
+    fireEvent.change(screen.getByPlaceholderText("e.g. Jamie Rivera"), { target: { value: "Jamie Rivera" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. 2021 Ford F-150"), { target: { value: "2019 Tacoma" } });
+    fireEvent.click(screen.getByRole("button", { name: /Mobile/ }));
+    fireEvent.change(screen.getByLabelText("Street address"), { target: { value: "9 Elm St" } });
+    fireEvent.click(slot("1:30 PM"));
+    expect(await screen.findByText(/city for mobile service/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Tremonton" } });
+    fireEvent.click(slot("1:30 PM"));
+    expect(await screen.findByText(/ZIP for mobile service/)).toBeTruthy();
+    expect(mocks.createManualBooking).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Service ZIP"), { target: { value: "84337" } });
+    fireEvent.click(slot("1:30 PM"));
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+    expect(mocks.createManualBooking.mock.calls[0][0]).toMatchObject({ type: "mobile", mobileAddress: "9 Elm St, Tremonton 84337" });
+  });
+});

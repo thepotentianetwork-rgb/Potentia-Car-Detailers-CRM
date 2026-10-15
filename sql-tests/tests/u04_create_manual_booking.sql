@@ -23,7 +23,7 @@ select booking_id is not null as existing_ok from public.create_manual_booking('
   (select ((now() at time zone 'America/Denver')::date + 7)), '11:30','dropoff','Civic', 'dddddddd-0000-0000-0000-000000000005');
 -- a mobile job at d8 14:00 (busy 13:45-15:15 with the 30-min travel buffer)
 select booking_id is not null as mobile_ok from public.create_manual_booking('44444444-4444-4444-4444-444444444444','dddd0000-0000-0000-0000-000000000001',
-  (select ((now() at time zone 'America/Denver')::date + 8)), '14:00','mobile','Van', 'dddddddd-0000-0000-0000-000000000005', null, null, null, '9 Elm St');
+  (select ((now() at time zone 'America/Denver')::date + 8)), '14:00','mobile','Van', 'dddddddd-0000-0000-0000-000000000005', null, null, null, '9 Elm St, Denver 80202');
 -- past, after closing, wrong-tenant customer, inactive add-on
 select sqltest.expect_error(format($q$select public.create_manual_booking('44444444-4444-4444-4444-444444444444','dddd0000-0000-0000-0000-000000000001', %s, '10:00','dropoff','Car', null, 'Late Larry')$q$, sqltest.d(-1)), '%already passed%');
 select sqltest.expect_error(format($q$select public.create_manual_booking('44444444-4444-4444-4444-444444444444','dddd0000-0000-0000-0000-000000000001', %s, '16:30','dropoff','Car', null, 'Late Larry', null, null, null, array['add00000-0000-0000-0000-000000000001']::uuid[])$q$, sqltest.d(9)), '%past closing%');

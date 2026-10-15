@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import ServiceAddressFields from "../../components/ServiceAddressFields";
+import { emptyServiceAddress, serviceAddressError, composeServiceAddress, zipOf } from "../../lib/serviceAddress";
 import { X, Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../../context/TenantContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -32,7 +34,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
   const [serviceIds, setServiceIds] = useState([]);
   const [vehicle, setVehicle] = useState("");
   const [type, setType] = useState("dropoff");
-  const [mobileAddress, setMobileAddress] = useState("");
+  const [serviceAddr, setServiceAddr] = useState(emptyServiceAddress);
 
   const [dayIndex, setDayIndex] = useState(0);
   const [dayBookings, setDayBookings] = useState([]);
@@ -77,7 +79,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
     if (customerMode === "new" && !newName.trim()) { setError("Enter the customer's name."); return; }
     if (customerMode === "existing" && !existingCustomerId) { setError("Select a customer."); return; }
     if (!vehicle.trim()) { setError("Enter their vehicle (e.g. 2021 Ford F-150)."); return; }
-    if (type === "mobile" && !mobileAddress.trim()) { setError("Enter the address for mobile service."); return; }
+    if (type === "mobile") { const e = serviceAddressError(serviceAddr); if (e) { setError(e); return; } }
 
     setSubmitting(true);
     setError("");
@@ -95,7 +97,7 @@ export function ManualBookingForm({ onClose, onCreated }) {
         newName: customerMode === "new" ? newName.trim() : null,
         newPhone: customerMode === "new" ? newPhone.trim() : null,
         staffId: staffId || null,
-        mobileAddress: mobileAddress.trim(),
+        mobileAddress: type === "mobile" ? composeServiceAddress(serviceAddr) : "",
       });
       onCreated();
     } catch (e) {
@@ -187,8 +189,8 @@ export function ManualBookingForm({ onClose, onCreated }) {
               </button>
             </div>
             {type === "mobile" && (
-              <input value={mobileAddress} onChange={(e) => setMobileAddress(e.target.value)} placeholder="Address for mobile service"
-                className="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none mb-5 mt-2" />
+              <ServiceAddressFields value={serviceAddr} onChange={setServiceAddr} className="mb-5 mt-2"
+                inputCls="w-full bg-[#0D0E10] border border-[#232529] rounded-lg px-3.5 py-2.5 text-sm outline-none" />
             )}
             {type !== "mobile" && <div className="mb-3" />}
 
