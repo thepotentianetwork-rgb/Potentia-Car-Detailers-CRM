@@ -48,6 +48,7 @@ export function Overview({ bookings, ownerName, onGo, now = new Date() }) {
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-semibold truncate">{b.profiles?.full_name || "Customer"}</div>
                     <div className="text-[11px] text-[#8E9196] truncate">{bookingTitle(b)}{b.vehicles?.label ? ` · ${b.vehicles.label}` : ""}</div>
+                    {b.type === "mobile" && b.mobile_address && <div className="text-[11px] text-[#8E9196] truncate">Mobile · {b.mobile_address}</div>}
                   </div>
                   <StatusPill status={b.status} />
                 </li>

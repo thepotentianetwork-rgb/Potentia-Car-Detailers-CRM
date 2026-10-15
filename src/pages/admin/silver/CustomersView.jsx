@@ -127,6 +127,7 @@ function CustomerDetails({ customer: c, vehicles, allBookings, onBack, onRefresh
               <div>
                 <div className="text-[13px] font-semibold">{day(c.upcoming.booking_date)} · {minutesToDisplay(pgTimeToMinutes(c.upcoming.start_time))}</div>
                 <div className="text-[12px] text-[#8E9196]">{bookingTitle(c.upcoming)}</div>
+                {c.upcoming.type === "mobile" && c.upcoming.mobile_address && <div className="text-[12px] text-[#8E9196]">Mobile · {c.upcoming.mobile_address}</div>}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -176,6 +177,7 @@ function CustomerDetails({ customer: c, vehicles, allBookings, onBack, onRefresh
             <div className="min-w-0">
               <div className="truncate">{bookingTitle(b)}</div>
               <div className="text-[11px] text-[#8E9196]">{day(b.booking_date)} · {minutesToDisplay(pgTimeToMinutes(b.start_time))} · {money(b.price_cents)}</div>
+              {b.type === "mobile" && b.mobile_address && <div className="text-[11px] text-[#8E9196] truncate">Mobile · {b.mobile_address}</div>}
             </div>
             <StatusPill status={b.status} />
           </li>

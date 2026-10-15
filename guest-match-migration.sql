@@ -7,7 +7,13 @@
 -- src/tenants/juans-auto-detailing.js). Without matching, every repeat
 -- customer would become a new guest profile. request_booking() now attaches
 -- a guest booking to this shop's existing customer with the same phone (or,
--- failing that, email) when tenants.guest_match_existing is true.
+-- failing that, email, then a unique name) when tenants.guest_match_existing
+-- is true.
+--
+-- Also (ALL shops, correctness fix): mobile bookings must have a full
+-- service address (street, city, ZIP). request_booking and
+-- create_manual_booking both reject a mobile booking without one; it's
+-- stored in the existing bookings.mobile_address column (no new column).
 --
 -- Based on the live request_booking (booking-window version, applied
 -- 2026-10-14). Changes: matching + pending cap per matched customer, flood
@@ -32,6 +38,23 @@ create or replace function public.normalize_us_phone(p text) returns text
     from (select regexp_replace(coalesce(p, ''), '[^0-9]', '', 'g') as d) x
 $$;
 revoke all on function public.normalize_us_phone(text) from public, anon, authenticated;
+
+-- 2b. Name normaliser for matching: trim, collapse whitespace, lower case.
+create or replace function public.normalize_person_name(p text) returns text
+  language sql immutable set search_path = '' as $$
+  select nullif(lower(regexp_replace(btrim(coalesce(p, '')), '\s+', ' ', 'g')), '')
+$$;
+revoke all on function public.normalize_person_name(text) from public, anon, authenticated;
+
+-- 2c. Mobile service address (ALL shops): street, city and ZIP at minimum,
+--     i.e. "<street>, <city>[, <state>] <ZIP>". The forms build exactly
+--     "street, city ZIP" from three required fields.
+create or replace function public.is_service_address(p text) returns boolean
+  language sql immutable set search_path = '' as $$
+  select coalesce(length(btrim(p)) between 10 and 300
+    and btrim(p) ~ '^[^,]*[0-9A-Za-z][^,]*,[ ]*[^,]*[A-Za-z][^,]*(,[^,]*)*[ ,][0-9]{5}(-[0-9]{4})?$', false)
+$$;
+revoke all on function public.is_service_address(text) from public, anon, authenticated;
 
 -- 3. request_booking with matching.
 CREATE OR REPLACE FUNCTION public.request_booking(p_tenant_slug text, p_service_id uuid, p_booking_date date, p_start_time time without time zone, p_type text, p_vehicle_label text, p_vehicle_color text DEFAULT NULL::text, p_mobile_address text DEFAULT NULL::text, p_guest_name text DEFAULT NULL::text, p_guest_phone text DEFAULT NULL::text, p_guest_email text DEFAULT NULL::text, p_guest_zip text DEFAULT NULL::text, p_addon_ids uuid[] DEFAULT NULL::uuid[], p_service_ids uuid[] DEFAULT NULL::uuid[])
@@ -112,8 +135,8 @@ begin
     raise exception 'Choose drop-off or mobile.' using errcode = 'P0001';
   end if;
   if p_type = 'mobile' then
-    if v_addr is null or length(v_addr) < 5 or length(v_addr) > 300 then
-      raise exception 'Enter the address for mobile service.' using errcode = 'P0001';
+    if not public.is_service_address(v_addr) then
+      raise exception 'Enter the full service address: street, city and ZIP.' using errcode = 'P0001';
     end if;
   else
     v_addr := null;
@@ -156,8 +179,9 @@ begin
     if v_zip is not null and v_zip !~ '^[0-9]{5}$' then
       raise exception 'Enter a 5-digit ZIP code.' using errcode = 'P0001';
     end if;
+    -- mobile: the service address carries the ZIP (checked above)
     if p_type = 'mobile' and v_zip is null then
-      raise exception 'Enter your ZIP code for mobile service.' using errcode = 'P0001';
+      v_zip := substring(v_addr from '([0-9]{5})(?:-[0-9]{4})?\s*$');
     end if;
   end if;
 
@@ -208,11 +232,12 @@ begin
     v_match := coalesce(v_tenant.guest_match_existing, false);
 
     -- Shops with guest_match_existing (Juan's) have no customer logins on the
-    -- portal; returning customers are recognised by phone or email instead of
+    -- portal; returning customers are recognised by phone, email or name instead of
     -- getting a duplicate guest profile. Rule (deterministic):
     --   1. PHONE first: a customer profile of THIS shop whose stored phone,
     --      digits only (leading US 1 dropped), equals the entered phone.
     --   2. Otherwise EMAIL: lower(trim(stored email)) = entered email.
+    --   3. Otherwise NAME (see below: unique name, no conflicting contact).
     --   Phone wins over email when they point at different profiles (phone
     --   is required and is how the shop reaches people). Ties: profiles with
     --   a login (source 'account') first, then the oldest, then by id.
@@ -228,6 +253,21 @@ begin
          where p.tenant_id = v_tenant.id and p.role = 'customer'
            and nullif(lower(btrim(coalesce(p.email, ''))), '') = v_email
          order by (p.source = 'account') desc, p.created_at, p.id limit 1;
+      end if;
+      -- 3. NAME, only when exactly one of this shop's customers has that
+      --    name (trim, collapse spaces, case-insensitive) AND its stored
+      --    contact doesn't conflict: stored phone blank or equal, stored
+      --    email blank or equal. Several with the name, or a conflict ->
+      --    no match (a new guest profile).
+      if v_matched.id is null then
+        select p.* into v_matched from public.profiles p
+         where p.tenant_id = v_tenant.id and p.role = 'customer'
+           and public.normalize_person_name(p.full_name) = public.normalize_person_name(v_name)
+           and (nullif(btrim(coalesce(p.phone, '')), '') is null or public.normalize_us_phone(p.phone) = v_phone)
+           and (nullif(btrim(coalesce(p.email, '')), '') is null or lower(btrim(p.email)) = v_email)
+           and (select count(*) from public.profiles q
+                 where q.tenant_id = v_tenant.id and q.role = 'customer'
+                   and public.normalize_person_name(q.full_name) = public.normalize_person_name(v_name)) = 1;
       end if;
     end if;
 
@@ -308,6 +348,95 @@ end;
 $function$
 ;
 
+
+-- 4. create_manual_booking (staff Add Booking): same address rule for mobile.
+--    Live body (md5 9a1a3b0adea71b3fcf1df62b70de1a12, read 2026-10-15) with
+--    only the address check changed.
+CREATE OR REPLACE FUNCTION public.create_manual_booking(p_tenant_id uuid, p_service_id uuid, p_booking_date date, p_start_time time without time zone, p_type text, p_vehicle_label text, p_profile_id uuid DEFAULT NULL::uuid, p_new_name text DEFAULT NULL::text, p_new_phone text DEFAULT NULL::text, p_staff_id uuid DEFAULT NULL::uuid, p_mobile_address text DEFAULT NULL::text, p_addon_ids uuid[] DEFAULT NULL::uuid[], p_service_ids uuid[] DEFAULT NULL::uuid[])
+ RETURNS TABLE(booking_id uuid, price_cents integer, duration_min integer)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_first   uuid;
+  v_svcs    jsonb;
+  v_ids     uuid[];
+  v_total   int;
+  v_cents   int;
+  v_profile uuid := p_profile_id;
+  v_vehicle uuid;
+  v_id      uuid;
+  v_label   text := btrim(coalesce(p_vehicle_label, ''));
+  v_addr    text := nullif(btrim(coalesce(p_mobile_address, '')), '');
+  v_name    text := btrim(coalesce(p_new_name, ''));
+begin
+  if p_tenant_id is null or not (public.is_potentia_admin()
+      or (public.is_tenant_staff() and p_tenant_id = public.current_tenant_id())) then
+    raise exception 'Not allowed.' using errcode = 'P0001';
+  end if;
+  select jsonb_agg(to_jsonb(x) order by x."position") into v_svcs from public.pick_booking_services(p_tenant_id,
+    case when cardinality(p_service_ids) > 0 then p_service_ids else array[p_service_id] end) x;
+  select x.service_id into v_first from jsonb_to_recordset(v_svcs) x(service_id uuid, name text, price_cents int, duration_min int, "position" int) order by x."position" limit 1;
+  if p_type is null or p_type not in ('dropoff', 'mobile') then
+    raise exception 'Choose drop-off or mobile.' using errcode = 'P0001';
+  end if;
+  if p_type = 'mobile' then
+    if not public.is_service_address(v_addr) then raise exception 'Enter the full service address: street, city and ZIP.' using errcode = 'P0001'; end if;
+  else
+    v_addr := null;
+  end if;
+  if length(v_label) < 1 or length(v_label) > 100 then
+    raise exception 'Enter their vehicle (e.g. 2021 Ford F-150).' using errcode = 'P0001';
+  end if;
+  if p_staff_id is not null and not exists (select 1 from public.profiles p where p.id = p_staff_id
+      and p.tenant_id = p_tenant_id and p.role in ('business_owner', 'staff')) then
+    raise exception 'Pick a detailer from this business.' using errcode = 'P0001';
+  end if;
+
+  select coalesce(array_agg(distinct x), '{}') into v_ids
+    from unnest(coalesce(p_addon_ids, '{}'::uuid[])) x where x is not null;
+  if (select count(*) from public.service_addons a where a.id = any(v_ids) and a.tenant_id = p_tenant_id and a.active)
+     <> cardinality(v_ids) then
+    raise exception 'One of those add-ons isn''t available.' using errcode = 'P0001';
+  end if;
+  v_total := (select sum(x.duration_min) from jsonb_to_recordset(v_svcs) x(service_id uuid, name text, price_cents int, duration_min int, "position" int))::int + coalesce((select sum(a.extra_duration_min) from public.service_addons a where a.id = any(v_ids)), 0);
+  v_cents := (select sum(x.price_cents) from jsonb_to_recordset(v_svcs) x(service_id uuid, name text, price_cents int, duration_min int, "position" int))::int + coalesce((select sum(a.price_cents) from public.service_addons a where a.id = any(v_ids)), 0);
+
+  perform public.assert_staff_slot(p_tenant_id, p_booking_date, p_start_time, v_total, p_type, null, false);
+
+  if v_profile is not null then
+    if not exists (select 1 from public.profiles p where p.id = v_profile and p.tenant_id = p_tenant_id and p.role = 'customer') then
+      raise exception 'Select a customer.' using errcode = 'P0001';
+    end if;
+  else
+    if length(v_name) < 1 or length(v_name) > 100 then raise exception 'Enter the customer''s name.' using errcode = 'P0001'; end if;
+    insert into public.profiles (tenant_id, full_name, phone, role, source)
+    values (p_tenant_id, v_name, nullif(btrim(coalesce(p_new_phone, '')), ''), 'customer', 'staff')
+    returning id into v_profile;
+  end if;
+
+  insert into public.vehicles (profile_id, tenant_id, label, is_primary)
+  values (v_profile, p_tenant_id, v_label, true) returning id into v_vehicle;
+
+  insert into public.bookings (profile_id, service_id, vehicle_id, staff_id, tenant_id, booking_date, start_time,
+                               duration_min, type, mobile_address, status, price_cents)
+  values (v_profile, v_first, v_vehicle, p_staff_id, p_tenant_id, p_booking_date, p_start_time,
+          v_total, p_type, v_addr, 'approved', v_cents)
+  returning id into v_id;
+
+  insert into public.booking_services (booking_id, tenant_id, service_id, name, price_cents, duration_min, "position")
+  select v_id, p_tenant_id, x.service_id, x.name, x.price_cents, x.duration_min, x."position" from jsonb_to_recordset(v_svcs) x(service_id uuid, name text, price_cents int, duration_min int, "position" int);
+
+  insert into public.booking_addons (booking_id, tenant_id, addon_id, name, price_cents, extra_duration_min)
+  select v_id, p_tenant_id, a.id, a.name, a.price_cents, a.extra_duration_min
+    from public.service_addons a where a.id = any(v_ids);
+
+  return query select v_id, v_cents, v_total;
+end;
+$function$
+;
+
 commit;
 
 -- ----------------------------------------------------------------------------
@@ -323,3 +452,9 @@ commit;
 --        (select count(*) from (select ph from p where ph is not null group by ph having count(*) > 1) x) phone_dup_groups,
 --        (select count(*) from (select em from p where em is not null group by em having count(*) > 1) x) email_dup_groups,
 --        (select count(*) from p a join p b on a.id < b.id and a.ph = b.ph and a.em <> b.em) same_phone_diff_email;
+
+-- Read-only: same-name customers in Juan's shop (name matching skips these).
+-- select lower(regexp_replace(btrim(p.full_name), '\s+', ' ', 'g')) as name, count(*)
+--   from public.profiles p join public.tenants t on t.id = p.tenant_id
+--  where t.slug = 'juans-auto-detailing' and p.role = 'customer'
+--  group by 1 having count(*) > 1;
