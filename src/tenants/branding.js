@@ -54,6 +54,12 @@ export const DEFAULT_BRANDING = {
   // Formspree form (https://formspree.io/f/<id>) that gets a POST for every
   // new portal booking request, so the owner gets an email. null = no alert.
   bookingAlertFormspreeUrl: null,
+  // English/Español toggle on the customer pages (src/i18n). Off for every
+  // shop unless its tenant file turns it on. `es` holds Spanish versions of
+  // the tenant-file copy: { tagline, priceNote, contact: { hours, ... } };
+  // serviceDetails entries may add includesEs / durationLabelEs.
+  languageToggle: false,
+  es: null,
   // Owner dashboard theme: null = standard dashboard, "silver" = the
   // silver-and-black dashboard (sidebar, overview, analytics).
   ownerTheme: null,

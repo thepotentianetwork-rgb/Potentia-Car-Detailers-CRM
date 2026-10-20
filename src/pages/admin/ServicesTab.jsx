@@ -7,6 +7,7 @@ import {
 import { dollars, minutesText } from "../../lib/addons.js";
 import { LoadingBox } from "../../components/LoadingBox.jsx";
 import { ErrorBox } from "../../components/ErrorBox.jsx";
+import { useBranding } from "../../tenants/branding.js";
 
 const inputCls = "w-full bg-[#111214] border border-[#232529] rounded-md px-2.5 py-1.5 text-[12px] outline-none";
 
@@ -29,7 +30,9 @@ const KINDS = {
 };
 
 // Returns [fields, error]. Prices are typed in dollars, stored in cents.
-export function parseCatalogForm(kind, form) {
+// spanish: also save the optional Spanish name/description (shops with the
+// customer language toggle, once spanish-migration.sql added the columns).
+export function parseCatalogForm(kind, form, { spanish = false } = {}) {
   const k = KINDS[kind];
   const name = form.name.trim();
   if (name.length < 2 || name.length > 100) return [null, "Name must be 2-100 characters."];
@@ -41,17 +44,28 @@ export function parseCatalogForm(kind, form) {
   }
   const description = form.description.trim();
   if (description.length > k.maxDesc) return [null, `Description must be ${k.maxDesc} characters or fewer.`];
-  return [{ name, description: description || null, price_cents: Math.round(price * 100), [k.minutesKey]: minutes }, ""];
+  const fields = { name, description: description || null, price_cents: Math.round(price * 100), [k.minutesKey]: minutes };
+  if (spanish) {
+    const nameEs = (form.name_es || "").trim();
+    if (nameEs && (nameEs.length < 2 || nameEs.length > 100)) return [null, "Spanish name must be 2-100 characters (or blank)."];
+    const descEs = (form.description_es || "").trim();
+    if (descEs.length > k.maxDesc) return [null, `Spanish description must be ${k.maxDesc} characters or fewer.`];
+    fields.name_es = nameEs || null;
+    fields.description_es = descEs || null;
+  }
+  return [fields, ""];
 }
 
 const toForm = (kind, x) => ({
   name: x?.name || "",
   description: x?.description || "",
+  name_es: x?.name_es || "",
+  description_es: x?.description_es || "",
   price: x ? String(x.price_cents / 100) : "",
   minutes: x ? String(x[KINDS[kind].minutesKey] ?? 0) : kind === "service" ? "60" : "0",
 });
 
-function CatalogForm({ kind, initial, onSave, onCancel, saveLabel }) {
+function CatalogForm({ kind, initial, onSave, onCancel, saveLabel, spanish = false }) {
   const k = KINDS[kind];
   const [form, setForm] = useState(toForm(kind, initial));
   const [error, setError] = useState("");
@@ -61,7 +75,7 @@ function CatalogForm({ kind, initial, onSave, onCancel, saveLabel }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    const [fields, problem] = parseCatalogForm(kind, form);
+    const [fields, problem] = parseCatalogForm(kind, form, { spanish });
     if (problem) { setError(problem); return; }
     setSaving(true);
     setError("");
@@ -79,6 +93,14 @@ function CatalogForm({ kind, initial, onSave, onCancel, saveLabel }) {
       <input id={`${id}-name`} aria-label="Name" value={form.name} onChange={set("name")} placeholder="Name" className={inputCls} />
       <textarea aria-label="Description" value={form.description} onChange={set("description")} rows={3}
         placeholder={k.descHint} className={inputCls} />
+      {spanish && (
+        <>
+          <input aria-label="Spanish name (optional)" value={form.name_es} onChange={set("name_es")}
+            placeholder="Spanish name (optional; blank = English name)" className={inputCls} />
+          <textarea aria-label="Spanish description (optional)" value={form.description_es} onChange={set("description_es")} rows={2}
+            placeholder="Spanish description (optional; one line per item)" className={inputCls} />
+        </>
+      )}
       <div className="flex gap-2">
         <input aria-label="Price ($)" inputMode="decimal" value={form.price} onChange={set("price")} placeholder="Price ($)" className={inputCls} />
         <input aria-label={k.minutesLabel} inputMode="numeric" value={form.minutes} onChange={set("minutes")} placeholder={k.minutesLabel} className={inputCls} />
@@ -101,6 +123,10 @@ function CatalogSection({ kind, tenantId }) {
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Spanish fields only for shops with the customer language toggle, and only
+  // once the columns exist (rows come back with name_es after the migration).
+  const branding = useBranding();
+  const spanish = kind === "service" && !!branding.languageToggle && !!items?.some((x) => "name_es" in x);
 
   const load = () => k.fetch(tenantId).then((r) => setItems(r || [])).catch((e) => { setError(e.message); setItems([]); });
   useEffect(() => { load(); }, [tenantId]);
@@ -134,7 +160,7 @@ function CatalogSection({ kind, tenantId }) {
       {error && <ErrorBox message={error} />}
       {adding && (
         <div className="mb-2">
-          <CatalogForm kind={kind} saveLabel={`Add ${kind === "service" ? "service" : "add-on"}`} onCancel={() => setAdding(false)}
+          <CatalogForm kind={kind} spanish={spanish} saveLabel={`Add ${kind === "service" ? "service" : "add-on"}`} onCancel={() => setAdding(false)}
             onSave={async (fields) => {
               const nextOrder = (items || []).reduce((m, x) => Math.max(m, x.sort_order || 0), 0) + 1;
               await k.create(tenantId, { ...fields, sort_order: nextOrder, active: true });
@@ -151,7 +177,7 @@ function CatalogSection({ kind, tenantId }) {
         <div className="space-y-1.5">
           {items.map((x, i) =>
             editingId === x.id ? (
-              <CatalogForm key={x.id} kind={kind} initial={x} saveLabel="Save" onCancel={() => setEditingId(null)}
+              <CatalogForm key={x.id} kind={kind} spanish={spanish} initial={x} saveLabel="Save" onCancel={() => setEditingId(null)}
                 onSave={async (fields) => { await k.update(x.id, fields); setEditingId(null); await load(); }} />
             ) : (
               <div key={x.id} data-testid={`${kind}-row`} className={`bg-[#111214] border border-[#232529] rounded-lg p-2.5 ${x.active ? "" : "opacity-60"}`}>
@@ -160,6 +186,7 @@ function CatalogSection({ kind, tenantId }) {
                     <div className="text-[13px] font-medium">{x.name}{!x.active && <span className="text-[10px] text-[#8B8F96]"> · inactive</span>}</div>
                     <div className="text-[11px] text-[#8B8F96]">{k.summary(x)}</div>
                     {x.description && <div className="text-[11px] text-[#5C5F66] whitespace-pre-line mt-0.5">{x.description}</div>}
+                    {spanish && x.name_es && <div className="text-[11px] text-[#5C5F66] mt-0.5">ES: {x.name_es}</div>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button aria-label={`Move ${x.name} up`} disabled={busy || i === 0} onClick={() => move(i, -1)} className="p-1 text-[#5C5F66] hover:text-[#C9CDD3] disabled:opacity-30"><ArrowUp size={12} /></button>

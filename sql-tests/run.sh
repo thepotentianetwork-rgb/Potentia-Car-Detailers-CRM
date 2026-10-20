@@ -56,6 +56,8 @@ if [ $with_migration = 1 ]; then
   echo "Applied ../booking-window-migration.sql"
   psql_q -d "$DB" -f ../guest-match-migration.sql >/dev/null 2>&1 || { echo "guest-match migration failed to apply:" >&2; psql_q -d "$DB" -f ../guest-match-migration.sql 2>&1 | grep -i error >&2; exit 2; }
   echo "Applied ../guest-match-migration.sql"
+  psql_q -d "$DB" -f ../spanish-migration.sql >/dev/null 2>&1 || { echo "spanish migration failed to apply" >&2; exit 2; }
+  echo "Applied ../spanish-migration.sql"
 else
   echo "NOT applying $MIGRATION (--no-migration)"
 fi

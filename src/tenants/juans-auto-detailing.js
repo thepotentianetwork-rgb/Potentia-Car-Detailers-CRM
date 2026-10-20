@@ -57,6 +57,20 @@ export default {
   ownerTheme: "silver",
   // No customer logins: every customer books as a guest (see branding.js).
   guestOnly: true,
+  // Customer pages get an English/Español toggle (src/i18n). Spanish service
+  // names/descriptions come from services.name_es/description_es
+  // (spanish-migration.sql); includesEs/durationLabelEs below are the
+  // fallback until then. The owner dashboard stays English.
+  languageToggle: true,
+  es: {
+    tagline: "¡Sin estrés, disfruta lo mejor!",
+    priceNote: "Los precios pueden variar según el tamaño del vehículo y la ubicación. Servicio a domicilio disponible dentro de nuestra área de servicio.",
+    contact: {
+      hours: "lunes a sábado",
+      serviceArea: "Condado de Box Elder y alrededores",
+      payment: "Pago en efectivo o Venmo.",
+    },
+  },
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",
   // Keyed by services.name in the seed file. Copy, "from" prices and duration
   // labels are from services.html. `includes` is now only a FALLBACK: the
@@ -67,50 +81,72 @@ export default {
     "Regular — Interior & Exterior": {
       durationLabel: "4 – 5 hrs",
       includes: ["Vacuum interior & wipe-down", "Windows in & out", "Hand wash & wheel clean", "Tire dressing"],
+      durationLabelEs: "4 – 5 h",
+      includesEs: ["Aspirado y limpieza del interior", "Vidrios por dentro y por fuera", "Lavado a mano y limpieza de rines", "Abrillantador de llantas"],
     },
     "Medium — Interior, Shampoo & Exterior": {
       durationLabel: "4 – 5 hrs",
       includes: ["Everything in Regular", "Carpet & upholstery shampoo", "Stain treatment on seats"],
+      durationLabelEs: "4 – 5 h",
+      includesEs: ["Todo lo del Regular", "Lavado de alfombras y tapicería", "Tratamiento de manchas en los asientos"],
     },
     "Super — Interior, Shampoo, Exterior & Engine": {
       durationLabel: "4 – 5 hrs",
       includes: ["Everything in Medium", "Engine bay clean & degrease", "Engine dressing"],
+      durationLabelEs: "4 – 5 h",
+      includesEs: ["Todo lo del Mediano", "Limpieza y desengrasado del motor", "Abrillantador de motor"],
     },
     "Full Detail — Everything + Wax": {
       durationLabel: "4 – 5 hrs",
       includes: ["Everything in Super", "Hand-applied exterior wax", "Trim dressing & glass polish"],
+      durationLabelEs: "4 – 5 h",
+      includesEs: ["Todo lo del Súper", "Cera aplicada a mano en el exterior", "Abrillantador de molduras y pulido de vidrios"],
     },
     "Interior Only": {
       from: true,
       durationLabel: "2 – 4 hrs",
       includes: ["Vacuum, wipe-down, windows & trim dressing. No exterior work."],
+      durationLabelEs: "2 – 4 h",
+      includesEs: ["Aspirado, limpieza, vidrios y abrillantador de molduras. Sin trabajo en el exterior."],
     },
     "Exterior Only": {
       from: true,
       durationLabel: "~1.5 hrs",
       includes: ["Hand wash & wheel clean. No interior work."],
+      durationLabelEs: "~1.5 h",
+      includesEs: ["Lavado a mano y limpieza de rines. Sin trabajo en el interior."],
     },
     "Paint Polish": {
       from: true,
       durationLabel: "~5 hrs",
       includes: ["Removes swirls & scratches, restores depth and gloss."],
+      durationLabelEs: "~5 h",
+      includesEs: ["Elimina marcas de remolino y rayones; devuelve la profundidad y el brillo."],
     },
     "Polish + Ceramic Coat": {
       from: true,
       durationLabel: "Half to full day",
       includes: ["Full machine polish plus a professional-grade ceramic coat that repels water and contaminants for years."],
+      durationLabelEs: "De medio día a un día completo",
+      includesEs: ["Pulido completo a máquina más un recubrimiento cerámico de grado profesional que repele el agua y la suciedad por años."],
     },
     "Headlight Restoration": {
       durationLabel: "~30 min",
       includes: ["Clears foggy, yellowed lenses for better visibility."],
+      durationLabelEs: "~30 min",
+      includesEs: ["Aclara los faros opacos y amarillentos para que veas mejor de noche."],
     },
     "Pet Hair Removal": {
       durationLabel: "~30 min",
       includes: ["Deep extraction from seats, carpet & trunk."],
+      durationLabelEs: "~30 min",
+      includesEs: ["Extracción profunda en asientos, alfombras y cajuela."],
     },
     "Odor Removal": {
       durationLabel: "~30 min",
       includes: ["Eliminates smoke, pet & musty odors at the source."],
+      durationLabelEs: "~30 min",
+      includesEs: ["Elimina olores a cigarro, mascotas y humedad desde la raíz."],
     },
   },
 };

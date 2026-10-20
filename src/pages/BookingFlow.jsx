@@ -6,7 +6,7 @@ import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
 import { fetchAvailability, requestBooking } from "../api/bookings.js";
 import { JumpToDate } from "../components/JumpToDate.jsx";
-import { getAvailableStarts, getBookingDays, dayIndexOnOrAfter, iso, dayLabel, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
+import { getAvailableStarts, getBookingDays, dayIndexOnOrAfter, iso, minutesToDisplay, minutesToPgTime, earliestStartFor } from "../lib/time.js";
 import { normalizePhone, formatPhone, isValidZip, isValidEmail } from "../lib/contact.js";
 import { useBranding, priceLabel } from "../tenants/branding.js";
 import { buildBookingAlert, sendBookingAlert } from "../lib/bookingAlert.js";
@@ -15,6 +15,9 @@ import { serviceTotals } from "../lib/bookingServices.js";
 import { ServicePicker } from "../components/ServicePicker.jsx";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
+import { useLang } from "../i18n/index.jsx";
+import { serviceName, priceLabelFor } from "../i18n/services.js";
+import { formatDay, formatTime, formatDuration } from "../i18n/format.js";
 
 const inputCls = "w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3.5 py-2.5 text-sm outline-none";
 const labelCls = "text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block";
@@ -26,6 +29,9 @@ const labelCls = "text-[11px] uppercase tracking-wide text-[var(--brand-muted)] 
 export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const { tenant, config } = useTenant();
   const branding = useBranding();
+  // Customer-facing copy follows the language toggle; what goes to the
+  // server and the owner alert stays the same (English names, 24h times).
+  const { lang, t, tm } = useLang();
   const closedWeekdays = branding.closedWeekdays;
   // Every day the business is open from today through BOOKING_WINDOW_DAYS
   // ahead (the window request_booking() accepts). Days are local-noon Dates
@@ -61,9 +67,11 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const totals = serviceTotals(services, serviceIds);
   const picked = totals.selected.length > 0;
   const serviceNames = totals.selected.map((s) => s.name).join(" + ");
+  const shownServiceNames = totals.selected.map((s) => serviceName(s, lang)).join(" + ");
   // "From $X" pricing (tenant file) carries over when any chosen service has it.
   const totalLabel = (cents) =>
     totals.selected.some((s) => priceLabel(s, branding).startsWith("From")) ? `From $${(cents / 100).toFixed(0)}` : `$${(cents / 100).toFixed(0)}`;
+  const shownTotalLabel = (cents) => totalLabel(cents).replace(/^From (.*)$/, (_, p) => t("book.from", { price: p }));
   // Today, hide start times that already passed (plus the lead time) in the
   // business's timezone; the server enforces the same rule.
   const minStart = earliestStartFor(dateKey, new Date(), config.timezone);
@@ -104,9 +112,13 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
     const problem = validate();
     if (problem) { setError(problem); return; }
     const confirmation = {
-      dateLabel: dayLabel(selectedDay),
-      time: minutesToDisplay(startMinutes),
-      service: serviceNames,
+      dateLabel: formatDay(selectedDay, lang),
+      time: formatTime(startMinutes, lang),
+      service: shownServiceNames,
+      // raw values, so the confirmation can re-format if the language changes
+      day: selectedDay,
+      startMinutes,
+      services: totals.selected,
       type,
       guest,
       name: guest ? guestName.trim() : undefined,
@@ -183,9 +195,9 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
 
   return (
     <main className="flex-1 px-5 py-6 lg:py-10 max-w-md lg:max-w-3xl mx-auto w-full">
-      <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-lg font-bold mb-1">Book a Service</h1>
+      <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-lg font-bold mb-1">{t("book.title")}</h1>
       {guest ? (
-        <p className="text-[13px] text-[var(--brand-muted)] mb-5">No account needed. Pick a time and {config.businessName} will reach out to confirm.</p>
+        <p className="text-[13px] text-[var(--brand-muted)] mb-5">{t("book.guestIntro", { business: config.businessName })}</p>
       ) : (
         <div className="mb-3" />
       )}
@@ -196,22 +208,22 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       <div data-testid="booking-col-details">
       {guest && (
         <>
-          <label htmlFor="guest-name" className={labelCls}>Name</label>
-          <input id="guest-name" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="First and last name"
+          <label htmlFor="guest-name" className={labelCls}>{t("book.name")}</label>
+          <input id="guest-name" value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder={t("book.namePh")}
             autoComplete="name" required className={`${inputCls} mb-3.5`} />
 
-          <label htmlFor="guest-phone" className={labelCls}>Mobile phone</label>
+          <label htmlFor="guest-phone" className={labelCls}>{t("book.phone")}</label>
           <input id="guest-phone" type="tel" inputMode="tel" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)}
             placeholder="(555) 123-4567" autoComplete="tel" required className={`${inputCls} mb-3.5`} />
 
           <div className="flex gap-2.5 mb-5">
             <div className="flex-[2]">
-              <label htmlFor="guest-email" className={labelCls}>Email (optional)</label>
+              <label htmlFor="guest-email" className={labelCls}>{t("book.email")}</label>
               <input id="guest-email" type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)}
-                placeholder="you@example.com" autoComplete="email" className={inputCls} />
+                placeholder={t("book.emailPh")} autoComplete="email" className={inputCls} />
             </div>
             <div className="flex-1">
-              <label htmlFor="guest-zip" className={labelCls}>ZIP (optional)</label>
+              <label htmlFor="guest-zip" className={labelCls}>{t("book.zipOptional")}</label>
               <input id="guest-zip" inputMode="numeric" maxLength={5} value={guestZip} onChange={(e) => setGuestZip(e.target.value)}
                 placeholder={branding.zipPlaceholder} autoComplete="postal-code" className={inputCls} />
             </div>
@@ -226,65 +238,65 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
 
       <div className="flex gap-2.5 mb-5">
         <div className="flex-[2]">
-          <label htmlFor="vehicle" className={labelCls}>Vehicle</label>
-          <input id="vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="e.g. 2021 Ford F-150" className={inputCls} />
+          <label htmlFor="vehicle" className={labelCls}>{t("book.vehicle")}</label>
+          <input id="vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder={t("book.vehiclePh")} className={inputCls} />
         </div>
         <div className="flex-1">
-          <label htmlFor="vehicle-color" className={labelCls}>Color (optional)</label>
-          <input id="vehicle-color" maxLength={30} value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder="e.g. Black" className={inputCls} />
+          <label htmlFor="vehicle-color" className={labelCls}>{t("book.color")}</label>
+          <input id="vehicle-color" maxLength={30} value={vehicleColor} onChange={(e) => setVehicleColor(e.target.value)} placeholder={t("book.colorPh")} className={inputCls} />
         </div>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Drop-off or Mobile</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">{t("book.where")}</label>
       <div className="flex gap-2.5 mb-2">
         <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
-          <Building2 size={13} /> Drop-off
+          <Building2 size={13} /> {t("book.dropoff")}
         </button>
         <button onClick={() => setType("mobile")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "mobile" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
-          <Home size={13} /> Mobile
+          <Home size={13} /> {t("book.mobile")}
         </button>
       </div>
       {type === "mobile" && (
         <ServiceAddressFields value={serviceAddr} onChange={setServiceAddr} inputCls={inputCls} className="mb-5 mt-2" />
       )}
       {type !== "mobile" && branding.contact?.address && (
-        <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">Drop-off at {branding.contact.address}</p>
+        <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">{t("home.dropoffAt", { address: branding.contact.address })}</p>
       )}
       {type !== "mobile" && !branding.contact?.address && <div className="mb-3" />}
 
       </div>
       <div data-testid="booking-col-time">
       <ServicePicker services={services} selectedIds={serviceIds} onChange={setServiceIds}
-        priceText={(s) => priceLabel(s, branding)} className="mb-2" />
+        priceText={(s) => priceLabelFor(s, branding, lang)} className="mb-2" />
       <p data-testid="booking-total" className="text-[12px] text-[var(--brand-muted)] mb-5">
-        {picked ? `Total: ${totalLabel(totals.priceCents)} · ${minutesText(totals.durationMin)}` : "Pick at least one service."}
+        {picked ? t("book.total", { price: shownTotalLabel(totals.priceCents), duration: formatDuration(totals.durationMin, lang) }) : t("book.pickService")}
       </p>
 
-      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Date</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">{t("book.date")}</label>
       <div className="flex items-center gap-2 mb-5">
-        <button onClick={() => setDayIndex((i) => Math.max(0, i - 1))} disabled={dayIndex === 0} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronLeft size={14} /></button>
-        <div className="flex-1 text-center bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg py-2.5 text-sm font-medium">{dayLabel(selectedDay)}</div>
-        <button onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronRight size={14} /></button>
+        <button aria-label={t("book.prevDay")} onClick={() => setDayIndex((i) => Math.max(0, i - 1))} disabled={dayIndex === 0} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronLeft size={14} /></button>
+        <div className="flex-1 text-center bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg py-2.5 text-sm font-medium">{formatDay(selectedDay, lang)}</div>
+        <button aria-label={t("book.nextDay")} onClick={() => setDayIndex((i) => Math.min(days.length - 1, i + 1))} disabled={dayIndex === days.length - 1} className="p-1.5 border border-[var(--brand-border)] rounded-md text-[var(--brand-muted)] disabled:opacity-30"><ChevronRight size={14} /></button>
       </div>
-      <JumpToDate days={days} index={dayIndex} onPick={setDayIndex}
+      <JumpToDate days={days} index={dayIndex} onPick={setDayIndex} label={t("book.jumpToDate")}
         className="-mt-3 mb-5 w-full bg-[var(--brand-input)] border border-[var(--brand-border)] rounded-lg px-3 py-2 text-[13px] text-[var(--brand-text)] outline-none [color-scheme:dark]" />
 
-      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">Available Start Times</label>
-      {error && <ErrorBox message={error} />}
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">{t("book.startTimes")}</label>
+      {error && <ErrorBox message={tm(error)} />}
       {loadingSlots ? (
         <LoadingBox />
       ) : availableStarts.length === 0 ? (
         <div className="text-center py-8 text-[13px] text-[var(--brand-subtle)] border border-dashed border-[var(--brand-border)] rounded-lg mb-2">{!picked
-            ? "Pick at least one service to see open times."
+            ? t("book.pickServiceForTimes")
             : totals.selected.length > 1
-            ? `No open time on this day fits ${serviceNames} (${minutesText(totals.durationMin)}). Try another day or fewer services.`
-            : "No slots long enough for this service on this day."}</div>
+            ? t("book.noFitMulti", { services: shownServiceNames, duration: formatDuration(totals.durationMin, lang) })
+            : t("book.noFit")}</div>
       ) : (
         <div className="grid grid-cols-3 gap-2.5 mb-2">
           {availableStarts.map((mins) => (
             <button key={mins} disabled={submitting} onClick={() => submitBooking(mins)}
               className="flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border border-[var(--brand-border)] hover:border-[var(--brand-border-hover)] transition-colors disabled:opacity-50">
-              <Clock size={12} /> {minutesToDisplay(mins)}
+              <Clock size={12} /> {formatTime(mins, lang)}
             </button>
           ))}
         </div>
