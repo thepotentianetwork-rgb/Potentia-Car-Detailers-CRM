@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Wrench, Phone, Mail, MapPin, CalendarDays, Wallet } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
-import { serviceIncludes } from "../lib/addons.js";
-import { useBranding, headingStyle, priceLabel, durationLabel } from "../tenants/branding.js";
+import { useBranding, headingStyle } from "../tenants/branding.js";
+import { useLang } from "../i18n/index.jsx";
+import { serviceName, serviceIncludesFor, priceLabelFor, durationLabelFor, localBranding } from "../i18n/services.js";
 import { LoadingBox } from "../components/LoadingBox.jsx";
 import { ErrorBox } from "../components/ErrorBox.jsx";
 
@@ -15,7 +16,9 @@ function rgb(hex) {
 
 export function Homepage({ onBook }) {
   const { tenant, config } = useTenant();
-  const branding = useBranding();
+  const { lang, t, tm } = useLang();
+  const branding = localBranding(useBranding(), lang);
+  const tagline = (lang === "es" && branding.tagline) || config.tagline;
   const [services, setServices] = useState(null);
   const [error, setError] = useState("");
 
@@ -53,38 +56,38 @@ export function Homepage({ onBook }) {
             className={branding.logo.wide ? "w-64 max-w-full h-auto mx-auto mb-4 object-contain" : "w-12 h-12 mx-auto mb-3 object-contain"}
             style={{ filter: "drop-shadow(0 0 24px rgba(160,168,188,0.25))" }}
           />
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--brand-subtle)] mb-4">Powered by Potentia</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--brand-subtle)] mb-4">{t("home.poweredBy")}</p>
           <h1 style={headingStyle(branding)} className="text-[28px] font-extrabold mb-2 leading-tight tracking-tight">
             {config.businessName}
           </h1>
-          {config.tagline && <p className="text-[13px] text-[var(--brand-muted)] mb-8">{config.tagline}</p>}
-          {!config.tagline && <div className="mb-8" />}
+          {tagline && <p className="text-[13px] text-[var(--brand-muted)] mb-8">{tagline}</p>}
+          {!tagline && <div className="mb-8" />}
           <button onClick={onBook} className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm px-6 py-3 rounded-lg transition-colors">
-            Book a Service
+            {t("home.book")}
           </button>
         </div>
       </section>
       <section className="px-5 pb-12 max-w-md lg:max-w-3xl mx-auto">
         <h2 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-[12px] font-bold uppercase tracking-wide text-[var(--brand-muted)] mb-3">
-          Services
+          {t("home.services")}
         </h2>
-        {error && <ErrorBox message={error} />}
+        {error && <ErrorBox message={tm(error)} />}
         {!services && !error && <LoadingBox />}
         <div data-testid="service-list" className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
           {services?.map((s) => {
             // Owner-edited description first; tenant file copy if it's blank.
-            const includes = serviceIncludes(s, branding);
+            const includes = serviceIncludesFor(s, branding, lang);
             return (
               <div key={s.id} className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg p-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Wrench size={14} className="text-[var(--brand-subtle)] shrink-0" />
                     <div className="min-w-0">
-                      <div className="text-sm font-medium">{s.name}</div>
-                      <div className="text-[11px] text-[var(--brand-subtle)]">{durationLabel(s, branding)}</div>
+                      <div className="text-sm font-medium">{serviceName(s, lang)}</div>
+                      <div className="text-[11px] text-[var(--brand-subtle)]">{durationLabelFor(s, branding, lang)}</div>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-[var(--brand-soft)] shrink-0">{priceLabel(s, branding)}</span>
+                  <span className="text-sm font-semibold text-[var(--brand-soft)] shrink-0">{priceLabelFor(s, branding, lang)}</span>
                 </div>
                 {includes?.length > 0 && (
                   <ul className="mt-2 ml-6 text-[12px] text-[var(--brand-muted)] space-y-0.5">
@@ -100,27 +103,27 @@ export function Homepage({ onBook }) {
         {contact && (
           <>
             <h2 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-[12px] font-bold uppercase tracking-wide text-[var(--brand-muted)] mt-8 mb-3">
-              Contact &amp; Hours
+              {t("home.contactHours")}
             </h2>
             <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-lg p-3.5 space-y-2.5 text-[13px]">
               {contact.phone && (
-                <div className="flex items-start gap-2.5"><Phone size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>Call or text {contact.phone}</span></div>
+                <div className="flex items-start gap-2.5"><Phone size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{t("home.callOrText", { phone: contact.phone })}</span></div>
               )}
               {contact.email && (
                 <div className="flex items-start gap-2.5"><Mail size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span className="break-all">{contact.email}</span></div>
               )}
               {contact.address && (
-                <div className="flex items-start gap-2.5"><MapPin size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>Drop-off at {contact.address}</span></div>
+                <div className="flex items-start gap-2.5"><MapPin size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{t("home.dropoffAt", { address: contact.address })}</span></div>
               )}
               {contact.hours && (
-                <div className="flex items-start gap-2.5"><CalendarDays size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>Open {contact.hours}</span></div>
+                <div className="flex items-start gap-2.5"><CalendarDays size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{t("home.open", { hours: contact.hours })}</span></div>
               )}
               {contact.payment && (
                 <div className="flex items-start gap-2.5"><Wallet size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{contact.payment}</span></div>
               )}
               {(contact.serviceArea || contact.cities?.length > 0) && (
                 <p className="text-[12px] text-[var(--brand-muted)] pt-1">
-                  Mobile service: {contact.serviceArea}
+                  {t("home.mobileService", { area: contact.serviceArea || "" })}
                   {contact.cities?.length > 0 && ` · ${contact.cities.join(" · ")}`}
                 </p>
               )}

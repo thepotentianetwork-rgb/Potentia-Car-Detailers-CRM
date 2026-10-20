@@ -4,6 +4,7 @@ import { signIn, signUp } from "../api/auth.js";
 import { normalizePhone, isValidZip } from "../lib/contact.js";
 import { Field } from "../components/Field.jsx";
 import { ForgotPasswordForm } from "../components/ForgotPasswordForm.jsx";
+import { useLang } from "../i18n/index.jsx";
 
 // mode: "login" | "signup" | "choose" | "forgot". "choose" is the customer portal's
 // "how do you want to book?" screen; it needs onGuest.
@@ -17,6 +18,8 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
   const [error, setError] = useState("");
   const [needsConfirm, setNeedsConfirm] = useState(false);
   const isLogin = mode === "login";
+  // English unless rendered inside a shop portal with the language toggle.
+  const { t, tm } = useLang();
 
   const submit = async (e) => {
     e.preventDefault();
@@ -49,13 +52,13 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
   if (needsConfirm) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-2">Check your email</h1>
-        <p className="text-sm text-[var(--brand-muted)] max-w-xs mb-6">We sent a confirmation link to {email}. Confirm it, then sign in.</p>
+        <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-2">{t("auth.checkEmail")}</h1>
+        <p className="text-sm text-[var(--brand-muted)] max-w-xs mb-6">{t("auth.checkEmailBody", { email })}</p>
         <button
           onClick={() => { setNeedsConfirm(false); setMode("login"); }}
           className="bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm px-6 py-2.5 rounded-lg"
         >
-          Go to Sign In
+          {t("auth.goSignIn")}
         </button>
       </div>
     );
@@ -66,8 +69,8 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
-            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">Reset your password</h1>
-            <p className="text-sm text-[var(--brand-muted)] mb-6">Enter your email and we'll send you a link to set a new password.</p>
+            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">{t("auth.resetTitle")}</h1>
+            <p className="text-sm text-[var(--brand-muted)] mb-6">{t("auth.resetBody")}</p>
             <ForgotPasswordForm business={tenantSlug} initialEmail={email} onBack={() => setMode("login")} />
           </div>
         </div>
@@ -80,23 +83,23 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
-            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">Book a service</h1>
-            <p className="text-sm text-[var(--brand-muted)] mb-6">Book as a guest, or create an account to keep your vehicle and history in one place.</p>
+            <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">{t("auth.chooseTitle")}</h1>
+            <p className="text-sm text-[var(--brand-muted)] mb-6">{t("auth.chooseBody")}</p>
             <div className="space-y-2.5">
               {onGuest && (
                 <button onClick={onGuest} className="w-full bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm py-2.5 rounded-lg transition-colors">
-                  Continue as guest
+                  {t("auth.continueGuest")}
                 </button>
               )}
               <button onClick={() => setMode("signup")} className="w-full border border-[var(--brand-border-strong)] hover:border-[var(--brand-border-hover)] text-[var(--brand-text)] font-semibold text-sm py-2.5 rounded-lg transition-colors">
-                Create an account
+                {t("auth.createAccount")}
               </button>
             </div>
             <button onClick={() => setMode("login")} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-5">
-              Already have an account? Sign in
+              {t("auth.haveAccount")}
             </button>
           </div>
-          <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">Back to homepage</button>
+          <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">{t("common.backHome")}</button>
         </div>
       </div>
     );
@@ -106,43 +109,43 @@ export function AuthScreen({ mode, setMode, onAuthed, onBack, setGlobalError, te
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="bg-[var(--brand-surface)] border border-[var(--brand-border)] rounded-xl p-6">
-          <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">{isLogin ? "Sign in" : "Create your account"}</h1>
-          <p className="text-sm text-[var(--brand-muted)] mb-6">{isLogin ? "Book services and track your detail history." : "Save your vehicle info and see every detail we've done."}</p>
+          <h1 style={{ fontFamily: "var(--brand-font-heading)" }} className="text-xl font-bold mb-1">{isLogin ? t("auth.signIn") : t("auth.createYourAccount")}</h1>
+          <p className="text-sm text-[var(--brand-muted)] mb-6">{isLogin ? t("auth.signInBody") : t("auth.signUpBody")}</p>
           <form onSubmit={submit} className="space-y-3.5">
-            {!isLogin && <Field icon={<User size={15} />} placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
-            <Field icon={<User size={15} />} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            {!isLogin && <Field icon={<User size={15} />} placeholder={t("auth.fullName")} value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
+            <Field icon={<User size={15} />} placeholder={t("auth.email")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             {!isLogin && (
               <>
-                <Field icon={<Phone size={15} />} placeholder="Mobile phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-                <Field icon={<MapPin size={15} />} placeholder="ZIP code (optional)" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value)} />
+                <Field icon={<Phone size={15} />} placeholder={t("auth.phone")} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                <Field icon={<MapPin size={15} />} placeholder={t("auth.zip")} inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value)} />
               </>
             )}
-            <Field icon={<User size={15} />} placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <Field icon={<User size={15} />} placeholder={t("auth.password")} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             {isLogin && (
               <div className="flex justify-end -mt-1">
                 <button type="button" onClick={() => { setError(""); setMode("forgot"); }} className="text-[12px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)]">
-                  Forgot password?
+                  {t("auth.forgot")}
                 </button>
               </div>
             )}
-            {error && <p className="text-[13px] text-[#E08A8A]">{error}</p>}
+            {error && <p className="text-[13px] text-[#E08A8A]">{tm(error)}</p>}
             <button type="submit" disabled={loading} className="w-full mt-2 bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-[var(--brand-on-primary)] font-semibold text-sm py-2.5 rounded-lg transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {loading && <Loader2 size={14} className="animate-spin" />}
-              {isLogin ? "Sign in" : "Create account"}
+              {isLogin ? t("auth.signIn") : t("auth.createAccountBtn")}
             </button>
           </form>
           {allowSignup && (
             <button onClick={() => setMode(isLogin ? "signup" : "login")} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-5">
-              {isLogin ? "New here? Create an account" : "Already have an account? Sign in"}
+              {isLogin ? t("auth.newHere") : t("auth.haveAccount")}
             </button>
           )}
           {onGuest && (
             <button onClick={onGuest} className="w-full text-center text-[13px] text-[var(--brand-muted)] hover:text-[var(--brand-soft)] mt-3">
-              Or continue as guest
+              {t("auth.orGuest")}
             </button>
           )}
         </div>
-        <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">Back to homepage</button>
+        <button onClick={onBack} className="w-full text-center text-[13px] text-[var(--brand-subtle)] hover:text-[var(--brand-muted)] mt-4">{t("common.backHome")}</button>
       </div>
     </div>
   );

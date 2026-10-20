@@ -11,8 +11,21 @@ import { AuthScreen } from "./AuthScreen.jsx";
 import { BookingFlow } from "./BookingFlow.jsx";
 import { Confirmed } from "./Confirmed.jsx";
 import { useBranding, brandingStyle, useTenantDocument } from "../tenants/branding.js";
+import { LanguageProvider, useLang } from "../i18n/index.jsx";
 
+// Shops with branding.languageToggle get the English/Español switch on every
+// portal screen; the choice is remembered per shop.
 export function CustomerPortal() {
+  const { tenant } = useTenant();
+  const branding = useBranding();
+  return (
+    <LanguageProvider slug={tenant.slug} enabled={!!branding.languageToggle}>
+      <PortalScreens />
+    </LanguageProvider>
+  );
+}
+
+function PortalScreens() {
   const { tenantSlug } = useParams();
   const { tenant } = useTenant();
   const { session, profile, checkingSession, profileError, handleAuthed, signOut } = useAuth();
@@ -20,6 +33,7 @@ export function CustomerPortal() {
   const [authMode, setAuthMode] = useState("login");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const branding = useBranding();
+  const { t } = useLang();
   useTenantDocument(branding, tenant.name);
 
   if (checkingSession) {
@@ -87,7 +101,7 @@ export function CustomerPortal() {
       {wrongTenant && (
         <div className="mx-5 mt-3 flex items-start gap-2 bg-[#3D1515] border border-[#5C2323] rounded-lg px-3.5 py-2.5 text-[12px] text-[#E08A8A]">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
-          You're signed in to a different business's account. Sign out to book with {tenant.name}.
+          {t("portal.wrongTenant", { business: tenant.name })}
         </div>
       )}
 
