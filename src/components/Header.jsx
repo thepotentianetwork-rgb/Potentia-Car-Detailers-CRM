@@ -53,7 +53,7 @@ export function Header({ loggedIn, onLogin, onDashboard, onSignOut, showLogin = 
       ) : !showLogin ? null : (
         <button
           onClick={onLogin}
-          className="flex items-center gap-1.5 text-[13px] font-medium border border-[var(--brand-border-strong)] hover:border-[var(--brand-border-hover)] px-3.5 py-1.5 rounded-md transition-colors"
+          className="flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium border border-[var(--brand-border-strong)] hover:border-[var(--brand-border-hover)] px-3.5 py-1.5 rounded-md transition-colors"
         >
           <User size={13} /> {t("header.login")}
         </button>

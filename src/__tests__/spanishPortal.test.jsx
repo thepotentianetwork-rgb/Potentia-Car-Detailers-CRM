@@ -217,6 +217,10 @@ describe("booking form in Spanish", () => {
     expect(screen.getByText("¡Gracias, Ana!")).toBeTruthy();
     expect(screen.getByText(/Recibimos tu solicitud de Restauración de faros \(en el taller\) el jue, 8 de oct a las 2:00 p\. m\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Listo" })).toBeTruthy();
+    // a morning time ends in "a. m." -- no doubled period before the next sentence
+    cleanup();
+    render(<LanguageProvider slug="juans-auto-detailing" enabled><Confirmed booking={{ ...booking, startMinutes: 600 }} onDone={() => {}} /></LanguageProvider>);
+    expect(screen.getByText(/a las 10:00 a\. m\. Juan's Auto Detailing se comunicará/)).toBeTruthy();
   });
 
   it("English is unchanged when the toggle is on EN", async () => {
