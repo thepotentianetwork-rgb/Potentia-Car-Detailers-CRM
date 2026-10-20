@@ -103,23 +103,38 @@ describe("guest booking form", () => {
     expect(onConfirm.mock.calls[0][0]).toMatchObject({ guest: true, name: "Gina Guest", phone: "(555) 201-0001", time: "2:00 PM", service: "Basic Wash" });
   });
 
-  it("mobile service needs an address and a ZIP, and sends both", async () => {
+  it("mobile service needs street, city and ZIP before it can be sent, and sends them as one address", async () => {
     const onConfirm = await renderGuest();
     fillGuest();
     fireEvent.click(screen.getByRole("button", { name: /Mobile/ }));
-    expect(screen.getByLabelText("ZIP")).toBeTruthy(); // no longer "(optional)"
-    fireEvent.click(await screen.findByRole("button", { name: /2:00 PM/ }));
-    expect(await screen.findByText(/ZIP code for mobile service/)).toBeTruthy();
-
-    type("ZIP", "80202");
-    fireEvent.click(screen.getByRole("button", { name: /2:00 PM/ }));
-    expect(await screen.findByText(/address for mobile service/)).toBeTruthy();
+    const tryBook = () => fireEvent.click(screen.getByRole("button", { name: /2:00 PM/ }));
+    tryBook();
+    expect(await screen.findByText(/street address for mobile service/)).toBeTruthy();
+    type("Street address", "1 Main St");
+    tryBook();
+    expect(await screen.findByText(/city for mobile service/)).toBeTruthy();
+    type("City", "Denver");
+    tryBook();
+    expect(await screen.findByText(/5-digit ZIP for mobile service/)).toBeTruthy();
+    type("Service ZIP", "8020");
+    tryBook();
+    expect(await screen.findByText(/5-digit ZIP for mobile service/)).toBeTruthy();
     expect(mocks.requestBooking).not.toHaveBeenCalled();
 
-    type("Address for mobile service", "1 Main St, Denver");
+    type("Service ZIP", "80202");
+    tryBook();
+    await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+    // guest ZIP left blank -> taken from the service address
+    expect(mocks.requestBooking.mock.calls[0][0]).toMatchObject({ type: "mobile", mobileAddress: "1 Main St, Denver 80202", guestZip: "80202" });
+  });
+
+  it("drop-off needs no address and sends none", async () => {
+    const onConfirm = await renderGuest();
+    fillGuest();
+    expect(screen.queryByLabelText("Street address")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /2:00 PM/ }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalled());
-    expect(mocks.requestBooking.mock.calls[0][0]).toMatchObject({ type: "mobile", mobileAddress: "1 Main St, Denver", guestZip: "80202" });
+    expect(mocks.requestBooking.mock.calls[0][0]).toMatchObject({ type: "dropoff", mobileAddress: "" });
   });
 
   it.each([

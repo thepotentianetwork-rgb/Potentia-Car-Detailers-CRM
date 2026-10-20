@@ -71,3 +71,10 @@ a local socket, or if `DATABASE_URL`/`PGSERVICE` is set.
 `booking-window-migration.sql` (NOT applied live yet) raises request_booking()'s
 limit from today + 13 to today + 180 days. `run.sh` applies it after the
 host-booking migration; `x01` and the updated `t05` fail without it.
+
+## Guest matching (y* tests)
+
+`guest-match-migration.sql` (NOT applied live yet) adds
+`tenants.guest_match_existing` (on for Juan's) and makes request_booking()
+attach guest bookings to that shop's existing customer by phone, else email.
+`run.sh` applies it last; `y01` fails without it.

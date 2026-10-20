@@ -169,3 +169,18 @@ describe("shared desktop layout (all shops)", () => {
     expect(container.querySelectorAll("main > div.flex.gap-1")).toHaveLength(0);
   });
 });
+
+describe("mobile service address is shown to the owner", () => {
+  it("on the silver overview (Juan) and on the standard Schedule tab (other shops)", async () => {
+    const mob = bk({ id: "m1", type: "mobile", mobile_address: "12 Oak St, Tremonton 84337" });
+    mocks.tenant = { id: "t-juan", slug: "juans-auto-detailing", industry: "auto_detailing" };
+    mocks.fetchTenantBookings.mockResolvedValue([mob]);
+    const a = render(<AdminDashboard session={{ user: { id: "u" } }} onSignOut={vi.fn()} />);
+    expect(await screen.findByText(/12 Oak St, Tremonton 84337/)).toBeTruthy();
+    a.unmount();
+    mocks.tenant = { id: "t-other", slug: "shine-shop", industry: "auto_detailing" };
+    render(<AdminDashboard session={{ user: { id: "u" } }} onSignOut={vi.fn()} />);
+    fireEvent.click(await screen.findByText("Schedule"));
+    expect(await screen.findByText(/12 Oak St, Tremonton 84337/)).toBeTruthy();
+  });
+});

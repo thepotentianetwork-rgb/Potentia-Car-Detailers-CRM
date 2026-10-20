@@ -49,7 +49,10 @@ export function CustomerPortal() {
   const wrongTenant = session && profile && profile.role === "customer" && profile.tenant_id !== tenant.id;
   // Guest booking needs no session (hosts book as guests too). If a customer
   // signs in meanwhile, the signed-in booking flow takes over instead.
-  const bookingAsGuest = screen === "guestBooking" && (!session || host);
+  // Guest-only shops (Juan's) never show login/sign-up: Book goes straight to
+  // the guest form, and the auth screen is never offered.
+  const guestOnly = branding.guestOnly;
+  const bookingAsGuest = (screen === "guestBooking" || (guestOnly && screen === "auth")) && (!session || host);
   const bookingSignedIn = (screen === "customerBooking" || screen === "guestBooking") && session && profile && !wrongTenant && !host;
 
   return (
@@ -57,6 +60,7 @@ export function CustomerPortal() {
       {screen !== "admin" && (
         <Header
           loggedIn={!!session && !host}
+          showLogin={!guestOnly}
           onLogin={() => { setAuthMode("login"); setScreen("auth"); }}
           onDashboard={() => setScreen("customerBooking")}
           onSignOut={handleSignOut}
@@ -93,13 +97,14 @@ export function CustomerPortal() {
             onBook={() => {
               if (host) return setScreen("guestBooking");
               if (session) return setScreen("customerBooking");
+              if (guestOnly) return setScreen("guestBooking");
               setAuthMode("choose");
               setScreen("auth");
             }}
           />
         )}
 
-        {screen === "auth" && (
+        {screen === "auth" && !guestOnly && (
           <AuthScreen
             mode={authMode}
             setMode={setAuthMode}

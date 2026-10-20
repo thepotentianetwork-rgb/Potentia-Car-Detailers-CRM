@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import ServiceAddressFields from "../components/ServiceAddressFields";
+import { emptyServiceAddress, serviceAddressError, composeServiceAddress, zipOf } from "../lib/serviceAddress";
 import { Clock, Building2, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTenant } from "../context/TenantContext.jsx";
 import { fetchServices } from "../api/services.js";
@@ -38,7 +40,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const [type, setType] = useState("dropoff");
   const [vehicle, setVehicle] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
-  const [mobileAddress, setMobileAddress] = useState("");
+  const [serviceAddr, setServiceAddr] = useState(emptyServiceAddress);
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
@@ -91,11 +93,10 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       if (guestName.trim().length < 2) return "Enter your name.";
       if (!normalizePhone(guestPhone)) return "Enter a 10-digit mobile phone number.";
       if (guestEmail.trim() && !isValidEmail(guestEmail)) return "Enter a valid email or leave it blank.";
-      if (type === "mobile" && !guestZip.trim()) return "Enter your ZIP code for mobile service.";
       if (guestZip.trim() && !isValidZip(guestZip)) return "Enter a 5-digit ZIP code.";
     }
     if (vehicle.trim().length < 2) return "Enter your vehicle (e.g. 2021 Ford F-150).";
-    if (type === "mobile" && mobileAddress.trim().length < 5) return "Enter the address for mobile service.";
+    if (type === "mobile") { const e = serviceAddressError(serviceAddr); if (e) return e; }
     return "";
   };
 
@@ -124,12 +125,12 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         type,
         vehicleLabel: vehicle.trim(),
         vehicleColor: vehicleColor.trim(),
-        mobileAddress: mobileAddress.trim(),
+        mobileAddress: type === "mobile" ? composeServiceAddress(serviceAddr) : "",
         ...(guest && {
           guestName: guestName.trim(),
           guestPhone: normalizePhone(guestPhone),
           guestEmail: guestEmail.trim(),
-          guestZip: guestZip.trim(),
+          guestZip: guestZip.trim() || (type === "mobile" ? zipOf(serviceAddr) : ""),
         }),
       });
       alertOwner(created, startMinutes);
@@ -155,7 +156,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         customerName: guest ? guestName.trim() : customer?.name,
         phone: formatPhone(guest ? guestPhone : customer?.phone ?? ""),
         email: guest ? guestEmail.trim() : customer?.email,
-        zip: guest ? guestZip.trim() : undefined,
+        zip: guest ? guestZip.trim() || (type === "mobile" ? zipOf(serviceAddr) : "") : undefined,
         vehicle: vehicle.trim(),
         vehicleColor: vehicleColor.trim(),
         service: serviceNames,
@@ -166,7 +167,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         }),
         totalDuration: minutesText(totals.durationMin),
         type,
-        mobileAddress: mobileAddress.trim(),
+        mobileAddress: type === "mobile" ? composeServiceAddress(serviceAddr) : "",
         dateKey,
         time: minutesToDisplay(startMinutes),
         ownerLink: `${window.location.origin}/crm/${tenant.slug}`,
@@ -210,7 +211,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
                 placeholder="you@example.com" autoComplete="email" className={inputCls} />
             </div>
             <div className="flex-1">
-              <label htmlFor="guest-zip" className={labelCls}>{type === "mobile" ? "ZIP" : "ZIP (optional)"}</label>
+              <label htmlFor="guest-zip" className={labelCls}>ZIP (optional)</label>
               <input id="guest-zip" inputMode="numeric" maxLength={5} value={guestZip} onChange={(e) => setGuestZip(e.target.value)}
                 placeholder={branding.zipPlaceholder} autoComplete="postal-code" className={inputCls} />
             </div>
@@ -244,8 +245,7 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         </button>
       </div>
       {type === "mobile" && (
-        <input aria-label="Address for mobile service" value={mobileAddress} onChange={(e) => setMobileAddress(e.target.value)} placeholder="Address for mobile service"
-          autoComplete="street-address" className={`${inputCls} mb-5 mt-2`} />
+        <ServiceAddressFields value={serviceAddr} onChange={setServiceAddr} inputCls={inputCls} className="mb-5 mt-2" />
       )}
       {type !== "mobile" && branding.contact?.address && (
         <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">Drop-off at {branding.contact.address}</p>

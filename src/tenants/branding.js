@@ -57,6 +57,11 @@ export const DEFAULT_BRANDING = {
   // Owner dashboard theme: null = standard dashboard, "silver" = the
   // silver-and-black dashboard (sidebar, overview, analytics).
   ownerTheme: null,
+  // true = the portal has no customer login or sign-up: everyone books as a
+  // guest, and request_booking() recognises returning customers by phone or
+  // email (tenants.guest_match_existing, guest-match-migration.sql). People
+  // already signed in on a customer account can still use it and sign out.
+  guestOnly: false,
 };
 
 export const TENANT_BRANDING = {

@@ -55,6 +55,8 @@ export default {
   // Owner/staff dashboard look: the silver-and-black redesign
   // (src/pages/admin/silver/). Other shops get the standard dashboard.
   ownerTheme: "silver",
+  // No customer logins: every customer books as a guest (see branding.js).
+  guestOnly: true,
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",
   // Keyed by services.name in the seed file. Copy, "from" prices and duration
   // labels are from services.html. `includes` is now only a FALLBACK: the

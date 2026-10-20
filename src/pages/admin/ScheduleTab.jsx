@@ -95,7 +95,7 @@ export function ScheduleTab({ bookings, busyId, onAct, onRefresh }) {
                     <div key={b.id} className="text-[11px] text-[#8B8F96] flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 flex-1 min-w-0">
                         {b.type === "mobile" ? <Home size={10} /> : <Building2 size={10} />}
-                        <span className="truncate">{bookingTitle(b)}</span>
+                        <span className="truncate">{bookingTitle(b)}{b.type === "mobile" && b.mobile_address ? ` · ${b.mobile_address}` : ""}</span>
                         {b.staff?.full_name && <span className="shrink-0"> · {b.staff.full_name}</span>}
                         {b.status === "pending" && <span className="text-[#D4AF37] shrink-0"> · pending</span>}
                         {b.status === "completed" && <span className="text-[#5FCB7C] shrink-0"> · done</span>}

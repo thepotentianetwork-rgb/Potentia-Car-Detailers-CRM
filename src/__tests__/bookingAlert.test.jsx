@@ -70,8 +70,9 @@ async function bookAsGuest({ email = "gina@example.com", mobile = false } = {}) 
   type(/^Color/, "Black");
   if (mobile) {
     fireEvent.click(screen.getByRole("button", { name: /Mobile/ }));
-    type(/^ZIP/, "84337");
-    type("Address for mobile service", "123 Main St, Tremonton");
+    type("Street address", "123 Main St");
+    type("City", "Tremonton");
+    type("Service ZIP", "84337");
   }
   fireEvent.click(screen.getByRole("button", { name: /3:00 PM/ }));
   await waitFor(() => expect(onConfirm).toHaveBeenCalled());
@@ -102,7 +103,7 @@ describe("owner alert after a guest booking request", () => {
       price: "From $75",
       total_duration: "1 hr 30 min",
       service_mode: "Mobile",
-      address: "123 Main St, Tremonton",
+      address: "123 Main St, Tremonton 84337",
       date: "Thursday, October 8, 2026",
       start_time: "3:00 PM",
       owner_requests_link: `${window.location.origin}/crm/juans-auto-detailing (Requests tab)`,
