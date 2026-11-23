@@ -43,7 +43,10 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
   const [services, setServices] = useState(null);
   // Any number of services in one booking; the first is preselected.
   const [serviceIds, setServiceIds] = useState([]);
-  const [type, setType] = useState("dropoff");
+  // mobileServiceEnabled: false (Juan, winter) hides Mobile and locks drop-off.
+  const mobileEnabled = branding.mobileServiceEnabled !== false;
+  const [typeChoice, setType] = useState("dropoff");
+  const type = mobileEnabled ? typeChoice : "dropoff";
   const [vehicle, setVehicle] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
   const [serviceAddr, setServiceAddr] = useState(emptyServiceAddress);
@@ -247,15 +250,17 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
         </div>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">{t("book.where")}</label>
+      <label className="text-[11px] uppercase tracking-wide text-[var(--brand-muted)] mb-1.5 block">{t(mobileEnabled ? "book.where" : "book.dropoff")}</label>
+      {mobileEnabled && (
       <div className="flex gap-2.5 mb-2">
-        <button onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
+        <button type="button" onClick={() => setType("dropoff")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "dropoff" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
           <Building2 size={13} /> {t("book.dropoff")}
         </button>
-        <button onClick={() => setType("mobile")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "mobile" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
+        <button type="button" onClick={() => setType("mobile")} className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2.5 rounded-lg border transition-colors ${type === "mobile" ? "border-[var(--brand-soft)] text-[var(--brand-text)]" : "border-[var(--brand-border)] text-[var(--brand-muted)]"}`}>
           <Home size={13} /> {t("book.mobile")}
         </button>
       </div>
+      )}
       {type === "mobile" && (
         <ServiceAddressFields value={serviceAddr} onChange={setServiceAddr} inputCls={inputCls} className="mb-5 mt-2" />
       )}

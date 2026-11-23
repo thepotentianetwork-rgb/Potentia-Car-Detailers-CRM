@@ -81,7 +81,7 @@ async function bookAsGuest({ email = "gina@example.com", mobile = false } = {}) 
 
 describe("owner alert after a guest booking request", () => {
   it("posts the booking details to the business's Formspree form", async () => {
-    await bookAsGuest({ mobile: true });
+    await bookAsGuest();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(FORM);
@@ -96,14 +96,13 @@ describe("owner alert after a guest booking request", () => {
       customer_type: "Guest (no account)",
       phone: "(435) 555-0101",
       email: "gina@example.com",
-      zip: "84337",
       vehicle: "2019 Jeep Wrangler (Black)",
       vehicle_color: "Black",
       service: "Exterior Only",
       price: "From $75",
       total_duration: "1 hr 30 min",
-      service_mode: "Mobile",
-      address: "123 Main St, Tremonton 84337",
+      service_mode: "Drop-off",
+      address: "N/A (drop-off)",
       date: "Thursday, October 8, 2026",
       start_time: "3:00 PM",
       owner_requests_link: `${window.location.origin}/crm/juans-auto-detailing (Requests tab)`,
@@ -180,6 +179,17 @@ describe("sendBookingAlert()", () => {
   const payload = buildBookingAlert({
     businessName: "Shop", guest: true, customerName: "A", vehicle: "Car", service: "Wash",
     price: "$10", type: "dropoff", dateKey: "2026-10-09", time: "9:00 AM", notes: "Dog hair",
+  });
+
+  it("marks a mobile job with the service address", () => {
+    const mobile = buildBookingAlert({
+      businessName: "Shop", guest: true, customerName: "A", vehicle: "Car", service: "Wash",
+      price: "$10", type: "mobile", mobileAddress: "123 Main St, Tremonton 84337",
+      zip: "84337", dateKey: "2026-10-09", time: "9:00 AM",
+    });
+    expect(mobile.service_mode).toBe("Mobile");
+    expect(mobile.address).toBe("123 Main St, Tremonton 84337");
+    expect(mobile.zip).toBe("84337");
   });
 
   it("includes notes when there are some", () => {

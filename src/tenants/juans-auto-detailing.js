@@ -57,8 +57,9 @@ export default {
   ownerTheme: "silver",
   // No customer logins: every customer books as a guest (see branding.js).
   guestOnly: true,
-  // Winter 2026: drop-off only. Shown as a dismissible pop-up on the portal.
-  // The Mobile booking option is left in place until Nando says to remove it.
+  // Winter 2026: drop-off only. Set mobileServiceEnabled to true in spring
+  // to restore the Mobile booking option. The seasonal notice is separate.
+  mobileServiceEnabled: false,
   seasonalNotice: {
     storageKey: "juans-winter-dropoff-notice-v1",
     days: 3,

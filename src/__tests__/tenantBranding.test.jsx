@@ -73,7 +73,9 @@ describe("getTenantBranding()", () => {
     expect(b.contact.email).toBe("js07272001@gmail.com");
     expect(b.closedWeekdays).toEqual([0]);
     expect(b.seasonalNotice.storageKey).toBe("juans-winter-dropoff-notice-v1");
+    expect(b.mobileServiceEnabled).toBe(false);
     expect(DEFAULT_BRANDING.seasonalNotice).toBeUndefined();
+    expect(DEFAULT_BRANDING.mobileServiceEnabled).toBe(true);
   });
 
   it("labels starting prices and site duration ranges", () => {

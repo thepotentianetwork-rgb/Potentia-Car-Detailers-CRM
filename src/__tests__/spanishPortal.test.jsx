@@ -166,12 +166,11 @@ describe("booking form in Spanish", () => {
     expect(screen.getByText(/Restauración de faros · \$45 · 30 min/)).toBeTruthy();
     expect(screen.getByText("Horarios disponibles")).toBeTruthy();
     expect(screen.getByText("Jue, 8 de oct")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /En el taller/ })).toBeTruthy();
+    // Winter: Juan is drop-off only, so there is no "A domicilio" toggle.
+    expect(screen.getAllByText("En el taller").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /A domicilio/ })).toBeNull();
+    expect(screen.queryByLabelText("Calle y número")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /A domicilio/ }));
-    // PR #13's street / city / ZIP fields, in Spanish
-    for (const l of ["Calle y número", "Ciudad", "Código postal del servicio"]) expect(screen.getByLabelText(l)).toBeTruthy();
-    expect(screen.queryByLabelText("Street address")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /2:00 p\. m\./ }));
     expect(await screen.findByText("Escribe tu nombre.")).toBeTruthy();
     expect(mocks.requestBooking).not.toHaveBeenCalled();
@@ -179,12 +178,8 @@ describe("booking form in Spanish", () => {
     type("Teléfono celular", "435-555-0101");
     type("Vehículo", "2019 Honda CR-V");
     fireEvent.click(screen.getByRole("button", { name: /2:00 p\. m\./ }));
-    expect(await screen.findByText("Escribe la calle y el número para el servicio a domicilio.")).toBeTruthy();
-    type("Calle y número", "12 Oak St");
-    type("Ciudad", "Tremonton");
-    fireEvent.click(screen.getByRole("button", { name: /2:00 p\. m\./ }));
-    expect(await screen.findByText("Escribe el código postal de 5 dígitos para el servicio a domicilio.")).toBeTruthy();
-    expect(mocks.requestBooking).not.toHaveBeenCalled();
+    expect(mocks.requestBooking).toHaveBeenCalled();
+    expect(mocks.requestBooking.mock.calls[0][0]).toMatchObject({ type: "dropoff" });
   });
 
   it("server errors shown to the customer are translated; unknown ones get a Spanish lead-in", async () => {

@@ -68,6 +68,9 @@ export const DEFAULT_BRANDING = {
   // email (tenants.guest_match_existing, guest-match-migration.sql). People
   // already signed in on a customer account can still use it and sign out.
   guestOnly: false,
+  // false hides the Mobile option in BookingFlow and forces drop-off.
+  // Defaults to true so existing shops are unchanged.
+  mobileServiceEnabled: true,
 };
 
 export const TENANT_BRANDING = {
