@@ -57,6 +57,18 @@ export default {
   ownerTheme: "silver",
   // No customer logins: every customer books as a guest (see branding.js).
   guestOnly: true,
+  // Winter 2026: drop-off only. Shown as a dismissible pop-up on the portal.
+  // The Mobile booking option is left in place until Nando says to remove it.
+  seasonalNotice: {
+    storageKey: "juans-winter-dropoff-notice-v1",
+    days: 3,
+    kicker: "Winter update",
+    title: "Drop-off only this season",
+    body: "From now through the cold season, we're doing drop-off service only — no mobile detailing for now. Book your drop-off below!",
+    addressPrefix: "Drop-off:",
+    cta: "Got it",
+    closeLabel: "Close notice",
+  },
   // Customer pages get an English/Español toggle (src/i18n). Spanish service
   // names/descriptions come from services.name_es/description_es
   // (spanish-migration.sql); includesEs/durationLabelEs below are the
@@ -69,6 +81,14 @@ export default {
       hours: "lunes a sábado",
       serviceArea: "Condado de Box Elder y alrededores",
       payment: "Pago en efectivo o Venmo.",
+    },
+    seasonalNotice: {
+      kicker: "Aviso de invierno",
+      title: "Solo drop-off esta temporada",
+      body: "Durante la temporada de frío, solo ofrecemos servicio de drop-off — por ahora no hay servicio a domicilio. ¡Reserva tu drop-off abajo!",
+      addressPrefix: "Drop-off:",
+      cta: "Entendido",
+      closeLabel: "Cerrar aviso",
     },
   },
   priceNote: "Pricing may vary based on vehicle size and location. Mobile service available within our service area.",

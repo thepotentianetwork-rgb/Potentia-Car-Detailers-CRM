@@ -12,6 +12,7 @@ import { BookingFlow } from "./BookingFlow.jsx";
 import { Confirmed } from "./Confirmed.jsx";
 import { useBranding, brandingStyle, useTenantDocument } from "../tenants/branding.js";
 import { LanguageProvider, useLang } from "../i18n/index.jsx";
+import { SeasonalNotice } from "../components/SeasonalNotice.jsx";
 
 // Shops with branding.languageToggle get the English/Español switch on every
 // portal screen; the choice is remembered per shop.
@@ -71,6 +72,7 @@ function PortalScreens() {
 
   return (
     <div style={brandingStyle(branding)} className="min-h-screen bg-[var(--brand-bg)] text-[var(--brand-text)] flex flex-col">
+      <SeasonalNotice />
       {screen !== "admin" && (
         <Header
           loggedIn={!!session && !host}
