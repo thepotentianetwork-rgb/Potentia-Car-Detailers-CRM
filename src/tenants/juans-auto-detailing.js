@@ -35,9 +35,8 @@ export default {
   contact: {
     phone: "435-282-1061", // "Call or Text"
     email: "js07272001@gmail.com",
-    // Street address is not shown to customers. Juan confirms and sends
-    // it after they book. Staff-only reference; customer pages use dropoffNote.
-    adminAddress: "900 W Main St #20, Tremonton, UT 84337",
+    // No street address here: a client bundle would ship it to the browser.
+    // Juan confirms and sends the drop-off address after customers book.
     hours: "Monday – Saturday", // the site lists days only, no open/close times
     serviceArea: "Box Elder County & Beyond",
     cities: ["Tremonton", "Brigham City", "Ogden", "Logan", "Perry", "Layton", "Preston"],
@@ -45,7 +44,7 @@ export default {
   },
   // book.html's calendar disables Sundays; the site says "Open Monday – Saturday".
   closedWeekdays: [0],
-  // No shop ZIP on the form — 84337 would pinpoint the drop-off location.
+  // Generic placeholder; do not use the shop ZIP on the customer form.
   zipPlaceholder: "ZIP",
   // Email alert to Juan for every new portal booking request (src/lib/bookingAlert.js).
   // TODO(Nando): form mykaqben ("Detail Submission Form", the one Juan's site
