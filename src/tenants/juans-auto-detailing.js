@@ -35,7 +35,9 @@ export default {
   contact: {
     phone: "435-282-1061", // "Call or Text"
     email: "js07272001@gmail.com",
-    address: "900 W Main St #20, Tremonton, UT 84337", // drop-off location
+    // Street address is not shown to customers. Juan confirms and sends
+    // it after they book. Staff-only reference; customer pages use dropoffNote.
+    adminAddress: "900 W Main St #20, Tremonton, UT 84337",
     hours: "Monday – Saturday", // the site lists days only, no open/close times
     serviceArea: "Box Elder County & Beyond",
     cities: ["Tremonton", "Brigham City", "Ogden", "Logan", "Perry", "Layton", "Preston"],
@@ -43,7 +45,8 @@ export default {
   },
   // book.html's calendar disables Sundays; the site says "Open Monday – Saturday".
   closedWeekdays: [0],
-  zipPlaceholder: "84337",
+  // No shop ZIP on the form — 84337 would pinpoint the drop-off location.
+  zipPlaceholder: "ZIP",
   // Email alert to Juan for every new portal booking request (src/lib/bookingAlert.js).
   // TODO(Nando): form mykaqben ("Detail Submission Form", the one Juan's site
   // posts to today) currently emails thepotentianetwork@gmail.com, not Juan.
@@ -60,13 +63,14 @@ export default {
   // Winter 2026: drop-off only. Set mobileServiceEnabled to true in spring
   // to restore the Mobile booking option. The seasonal notice is separate.
   mobileServiceEnabled: false,
+  // Customer-facing drop-off copy (homepage, booking form, winter notice).
+  dropoffNote: "Drop-off in Tremonton, UT. Juan will confirm and send you the exact address after you book.",
   seasonalNotice: {
     storageKey: "juans-winter-dropoff-notice-v1",
     days: 3,
     kicker: "Winter update",
     title: "Drop-off only this season",
     body: "From now through the cold season, we're doing drop-off service only — no mobile detailing for now. Book your drop-off below!",
-    addressPrefix: "Drop-off:",
     cta: "Got it",
     closeLabel: "Close notice",
   },
@@ -83,11 +87,11 @@ export default {
       serviceArea: "Condado de Box Elder y alrededores",
       payment: "Pago en efectivo o Venmo.",
     },
+    dropoffNote: "Drop-off en Tremonton, UT. Juan te confirmará y te enviará la dirección exacta después de que reserves.",
     seasonalNotice: {
       kicker: "Aviso de invierno",
       title: "Solo drop-off esta temporada",
       body: "Durante la temporada de frío, solo ofrecemos servicio de drop-off — por ahora no hay servicio a domicilio. ¡Reserva tu drop-off abajo!",
-      addressPrefix: "Drop-off:",
       cta: "Entendido",
       closeLabel: "Cerrar aviso",
     },

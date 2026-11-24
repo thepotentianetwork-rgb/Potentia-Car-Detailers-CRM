@@ -264,10 +264,13 @@ export function BookingFlow({ guest = false, customer = null, onConfirm }) {
       {type === "mobile" && (
         <ServiceAddressFields value={serviceAddr} onChange={setServiceAddr} inputCls={inputCls} className="mb-5 mt-2" />
       )}
-      {type !== "mobile" && branding.contact?.address && (
+      {type !== "mobile" && ((lang === "es" && branding.es?.dropoffNote) || branding.dropoffNote) && (
+        <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">{(lang === "es" && branding.es?.dropoffNote) || branding.dropoffNote}</p>
+      )}
+      {type !== "mobile" && !branding.dropoffNote && branding.contact?.address && (
         <p className="text-[12px] text-[var(--brand-muted)] mt-2 mb-5">{t("home.dropoffAt", { address: branding.contact.address })}</p>
       )}
-      {type !== "mobile" && !branding.contact?.address && <div className="mb-3" />}
+      {type !== "mobile" && !branding.dropoffNote && !branding.contact?.address && <div className="mb-3" />}
 
       </div>
       <div data-testid="booking-col-time">

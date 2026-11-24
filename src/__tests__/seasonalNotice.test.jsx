@@ -13,13 +13,13 @@ const mocks = vi.hoisted(() => ({
       cta: "Got it",
       closeLabel: "Close notice",
     },
-    contact: { address: "900 W Main St #20, Tremonton, UT 84337" },
+    dropoffNote: "Drop-off in Tremonton, UT. Juan will confirm and send you the exact address after you book.",
     es: {
+      dropoffNote: "Drop-off en Tremonton, UT. Juan te confirmará y te enviará la dirección exacta después de que reserves.",
       seasonalNotice: {
         kicker: "Aviso de invierno",
         title: "Solo drop-off esta temporada",
         body: "Durante la temporada de frío, solo ofrecemos servicio de drop-off — por ahora no hay servicio a domicilio. ¡Reserva tu drop-off abajo!",
-        addressPrefix: "Drop-off:",
         cta: "Entendido",
         closeLabel: "Cerrar aviso",
       },
@@ -46,7 +46,8 @@ describe("SeasonalNotice (Juan winter drop-off)", () => {
     expect(dialog.textContent).toMatch(/Winter update/);
     expect(dialog.textContent).toMatch(/drop-off service only/);
     expect(dialog.textContent).toMatch(/no mobile detailing for now/);
-    expect(dialog.textContent).toMatch(/900 W Main St #20, Tremonton, UT 84337/);
+    expect(dialog.textContent).toMatch(/Drop-off in Tremonton, UT\. Juan will confirm and send you the exact address after you book\./);
+    expect(dialog.textContent).not.toMatch(/900 W|Main St|84337/);
   });
 
   it("remembers dismissal for later visits", () => {
@@ -63,6 +64,8 @@ describe("SeasonalNotice (Juan winter drop-off)", () => {
     render(<SeasonalNotice />);
     expect(screen.getByRole("dialog", { name: "Solo drop-off esta temporada" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Entendido" })).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toMatch(/Drop-off en Tremonton, UT/);
+    expect(screen.getByRole("dialog").textContent).not.toMatch(/900 W|Main St|84337/);
   });
 
   it("renders nothing when the tenant has no seasonal notice", () => {

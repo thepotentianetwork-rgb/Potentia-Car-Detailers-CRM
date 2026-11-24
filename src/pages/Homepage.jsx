@@ -112,8 +112,8 @@ export function Homepage({ onBook }) {
               {contact.email && (
                 <div className="flex items-start gap-2.5"><Mail size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span className="break-all">{contact.email}</span></div>
               )}
-              {contact.address && (
-                <div className="flex items-start gap-2.5"><MapPin size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{t("home.dropoffAt", { address: contact.address })}</span></div>
+              {(branding.dropoffNote || contact.address) && (
+                <div className="flex items-start gap-2.5"><MapPin size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{branding.dropoffNote || t("home.dropoffAt", { address: contact.address })}</span></div>
               )}
               {contact.hours && (
                 <div className="flex items-start gap-2.5"><CalendarDays size={14} className="text-[var(--brand-subtle)] mt-0.5 shrink-0" /> <span>{t("home.open", { hours: contact.hours })}</span></div>

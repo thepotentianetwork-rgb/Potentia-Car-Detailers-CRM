@@ -59,7 +59,8 @@ describe("winter drop-off only (Juan)", () => {
 
     expect(screen.queryByRole("button", { name: /^Mobile$/i })).toBeNull();
     expect(screen.queryByText(/Drop-off or Mobile/)).toBeNull();
-    expect(screen.getByText(/Drop-off at 900 W Main St #20, Tremonton, UT 84337/)).toBeTruthy();
+    expect(screen.getByText(/Drop-off in Tremonton, UT\. Juan will confirm and send you the exact address after you book\./)).toBeTruthy();
+    expect(screen.queryByText(/900 W|Main St|84337/)).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Gina Guest" } });
     fireEvent.change(screen.getByLabelText("Mobile phone"), { target: { value: "4355550101" } });

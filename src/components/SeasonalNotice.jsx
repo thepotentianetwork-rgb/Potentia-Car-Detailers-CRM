@@ -42,7 +42,7 @@ export function SeasonalNotice() {
     setOpen(false);
   };
 
-  const address = copy.address || branding.contact?.address;
+  const dropoffNote = (lang === "es" && branding.es?.dropoffNote) || copy.dropoffNote || branding.dropoffNote;
 
   return (
     <div
@@ -71,9 +71,9 @@ export function SeasonalNotice() {
         <p id="seasonal-notice-body" className="text-[15px] leading-relaxed text-[var(--brand-text)] mb-3">
           {copy.body}
         </p>
-        {address && (
+        {dropoffNote && (
           <p className="text-[11px] tracking-wide text-[var(--brand-muted)] mb-6">
-            {copy.addressPrefix ? `${copy.addressPrefix} ${address}` : address}
+            {dropoffNote}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-4">

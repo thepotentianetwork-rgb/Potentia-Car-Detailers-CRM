@@ -100,7 +100,8 @@ describe("booking days", () => {
     nextDay();
     expect(dateLabel().textContent).toBe("Mon, Oct 12");
     expect(screen.getByLabelText(/^Paint Polish · From \$400 · /)).toBeTruthy();
-    expect(screen.getByText("Drop-off at 900 W Main St #20, Tremonton, UT 84337")).toBeTruthy();
+    expect(screen.getByText("Drop-off in Tremonton, UT. Juan will confirm and send you the exact address after you book.")).toBeTruthy();
+    expect(screen.queryByText(/900 W|Main St|84337/)).toBeNull();
   });
 
   it("still offers Sundays for tenants without closed days", async () => {
